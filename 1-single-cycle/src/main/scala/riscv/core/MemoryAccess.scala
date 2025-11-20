@@ -68,7 +68,6 @@ class MemoryAccess extends Module {
     // Select halfword based on bit 1 of address (word-aligned halfwords)
     val half = Mux(mem_address_index(1), Cat(bytes(3), bytes(2)), Cat(bytes(1), bytes(0)))
 
-    // TODO: Complete sign/zero extension for load operations
     // Hint:
     // - Use Fill to replicate a bit multiple times
     // - For sign extension: Fill with the sign bit (MSB)
@@ -76,21 +75,17 @@ class MemoryAccess extends Module {
     // - Use Cat to concatenate extension bits with loaded data
     io.wb_memory_read_data := MuxLookup(io.funct3, 0.U)(
       Seq(
-        // TODO: Complete LB (sign-extend byte)
         // Hint: Replicate sign bit, then concatenate with byte
-        InstructionsTypeL.lb  -> ?,
+        InstructionsTypeL.lb  -> Cat(Fill(Parameters.DataBits - Parameters.ByteBits, byte(Parameters.ByteBits - 1)), byte),
 
-        // TODO: Complete LBU (zero-extend byte)
         // Hint: Fill upper bits with zero, then concatenate with byte
-        InstructionsTypeL.lbu -> ?,
+        InstructionsTypeL.lbu -> Cat(Fill(Parameters.DataBits - Parameters.ByteBits, 0.U), byte),
 
-        // TODO: Complete LH (sign-extend halfword)
         // Hint: Replicate sign bit, then concatenate with halfword
-        InstructionsTypeL.lh  -> ?,
+        InstructionsTypeL.lh  -> Cat(Fill(Parameters.DataBits - Parameters.DataBits / 2, half(Parameters.DataBits / 2 - 1)), half),
 
-        // TODO: Complete LHU (zero-extend halfword)
         // Hint: Fill upper bits with zero, then concatenate with halfword
-        InstructionsTypeL.lhu -> ?,
+        InstructionsTypeL.lhu -> Cat(Fill(Parameters.DataBits - Parameters.DataBits / 2, 0.U), half),
 
         // LW: Load full word, no extension needed (completed example)
         InstructionsTypeL.lw  -> data
@@ -137,8 +132,8 @@ class MemoryAccess extends Module {
         // Hint:
         // 1. Enable single byte strobe at appropriate position
         // 2. Shift byte data to correct position based on address
-        writeStrobes(?) := true.B
-        writeData := data(?) << (mem_address_index << ?)
+        writeStrobes(mem_address_index) := true.B
+        writeData := data(7, 0) << (mem_address_index << 1)
       }
       is(InstructionsTypeS.sh) {
         // TODO: Complete store halfword logic
@@ -146,15 +141,15 @@ class MemoryAccess extends Module {
         when(mem_address_index(?) === 0.U) {
           // Lower halfword (bytes 0-1)
           // TODO: Enable strobes for lower two bytes, no shifting needed
-          writeStrobes(?) := true.B
-          writeStrobes(?) := true.B
-          writeData := data(?)
+          writeStrobes(mem_address_index) := true.B
+          writeStrobes(mem_address_index+1.U) := true.B
+          writeData := data(15, 0)
         }.otherwise {
           // Upper halfword (bytes 2-3)
           // TODO: Enable strobes for upper two bytes, apply appropriate shift
-          writeStrobes(?) := true.B
-          writeStrobes(?) := true.B
-          writeData := data(?) << ?
+          writeStrobes(mem_address_index) := true.B
+          writeStrobes(mem_address_index+1.U) := true.B
+          writeData := data(15, 0) << 16
         }
       }
       is(InstructionsTypeS.sw) {
