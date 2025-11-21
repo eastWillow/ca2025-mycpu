@@ -128,25 +128,21 @@ class MemoryAccess extends Module {
 
     switch(io.funct3) {
       is(InstructionsTypeS.sb) {
-        // TODO: Complete store byte logic
         // Hint:
         // 1. Enable single byte strobe at appropriate position
         // 2. Shift byte data to correct position based on address
         writeStrobes(mem_address_index) := true.B
-        writeData := data(7, 0) << (mem_address_index << 1)
+        writeData := data(7, 0) << (mem_address_index << 3) //Left shift by (mem_address_index * 8) bits
       }
       is(InstructionsTypeS.sh) {
-        // TODO: Complete store halfword logic
         // Hint: Check address to determine lower/upper halfword position
         when(mem_address_index(1, 0) === 0.U) {
           // Lower halfword (bytes 0-1)
-          // TODO: Enable strobes for lower two bytes, no shifting needed
           writeStrobes(mem_address_index) := true.B
           writeStrobes(mem_address_index+1.U) := true.B
           writeData := data(15, 0)
         }.otherwise {
           // Upper halfword (bytes 2-3)
-          // TODO: Enable strobes for upper two bytes, apply appropriate shift
           writeStrobes(mem_address_index) := true.B
           writeStrobes(mem_address_index+1.U) := true.B
           writeData := data(15, 0) << 16
