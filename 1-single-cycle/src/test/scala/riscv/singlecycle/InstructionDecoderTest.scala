@@ -80,6 +80,14 @@ class InstructionDecoderTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.regs_reg2_read_address.expect(15.U)
       c.clock.step()
 
+      c.io.instruction.poke(0x0062f863L.U) // bgeu x5, x6, 16
+      c.io.ex_aluop1_source.expect(ALUOp1Source.InstructionAddress)
+      c.io.ex_aluop2_source.expect(ALUOp2Source.Immediate)
+      c.io.ex_immediate.expect(16.U)
+      c.io.regs_reg1_read_address.expect(5.U)
+      c.io.regs_reg2_read_address.expect(6.U)
+      c.clock.step()
+
       // InstructionTypes.RM, R-type instructions
       c.io.instruction.poke(0x002081b3L.U) // add
       c.io.ex_aluop1_source.expect(ALUOp1Source.Register)
