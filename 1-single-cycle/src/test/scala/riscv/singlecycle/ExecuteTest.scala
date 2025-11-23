@@ -59,6 +59,21 @@ class ExecuteTest extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step()
       c.io.if_jump_flag.expect(0.U)
       c.io.if_jump_address.expect(4.U)
+
+      // addi test
+      c.io.instruction.poke(0xfe010113L.U) // addi    sp(x2),sp(x2),-32
+      //c.io.instruction_address.poke(2.U)
+      c.io.reg1_data.poke(0.U)
+      // c.io.reg2_data.poke(2.U)
+      c.io.immediate.poke(0xFFFFFFE0L.U(32.W))
+      c.io.aluop1_source.poke(ALUOp1Source.Register)
+      c.io.aluop2_source.poke(ALUOp2Source.Immediate)
+      c.clock.step()
+
+      c.io.mem_alu_result.expect(0xFFFFFFE0L.U(32.W))
+      c.io.if_jump_flag.expect(0.U)
+      // c.io.if_jump_address.expect(0.U)
+
     }
   }
 }
