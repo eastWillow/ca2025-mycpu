@@ -89,7 +89,7 @@ class ExecuteTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.if_jump_flag.expect(1.U)
       c.io.if_jump_address.expect(18.U)
 
-      // rs1 == rs2
+      // rs1 === rs2
       c.io.reg1_data.poke(9.U)
       c.io.reg2_data.poke(9.U)
       c.clock.step() // add
@@ -102,6 +102,28 @@ class ExecuteTest extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step() // add
       c.io.if_jump_flag.expect(0.U)
       c.io.if_jump_address.expect(18.U)
+
+      // bne test
+      c.io.instruction.poke(0x00f71663L.U) // bne x14, x15, 12
+      c.io.instruction_address.poke(2.U)
+      c.io.immediate.poke(18.U)
+      c.io.aluop1_source.poke(ALUOp1Source.InstructionAddress)
+      c.io.aluop2_source.poke(ALUOp2Source.Immediate)
+      c.clock.step()
+
+      // rs1 === rs2
+      c.io.reg1_data.poke(9.U)
+      c.io.reg2_data.poke(9.U)
+      c.clock.step() // add
+      c.io.if_jump_flag.expect(0.U)
+      c.io.if_jump_address.expect(20.U)
+
+      // rs1 =/= rs2
+      c.io.reg1_data.poke(8.U)
+      c.io.reg2_data.poke(9.U)
+      c.clock.step() // add
+      c.io.if_jump_flag.expect(1.U)
+      c.io.if_jump_address.expect(20.U)
     }
   }
 }
