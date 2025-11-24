@@ -124,6 +124,26 @@ class ExecuteTest extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step() // add
       c.io.if_jump_flag.expect(1.U)
       c.io.if_jump_address.expect(20.U)
+
+      // jal, J-type
+      c.io.instruction.poke(0x008002efL.U) // jal x5, 8
+      c.io.aluop1_source.poke(ALUOp1Source.InstructionAddress)
+      c.io.aluop2_source.poke(ALUOp2Source.Immediate)
+      c.io.instruction_address.poke(1.U)
+      c.io.immediate.poke(8.U)
+      c.clock.step()
+      c.io.if_jump_flag.expect(1.U)
+      c.io.if_jump_address.expect(9.U)
+
+      // jalr, I-type
+      c.io.instruction.poke(0x008082e7L.U) // jalr x5, x1, 8
+      c.io.aluop1_source.poke(ALUOp1Source.Register)
+      c.io.aluop2_source.poke(ALUOp2Source.Immediate)
+      c.io.reg1_data.poke(10.U)
+      c.io.immediate.poke(9.U)
+      c.clock.step()
+      c.io.if_jump_flag.expect(1.U)
+      c.io.if_jump_address.expect(0x12) //18 (2-byte alignment)
     }
   }
 }
