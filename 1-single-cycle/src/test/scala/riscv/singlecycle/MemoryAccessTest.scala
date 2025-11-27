@@ -12,6 +12,7 @@ import riscv.core._
 import riscv.core.MemoryAccess
 import riscv.TestAnnotations
 import riscv.Parameters
+import peripheral.RAMBundle
 
 class MemoryAccessTest extends AnyFlatSpec with ChiselScalatestTester {
     behavior.of("MemoryAccess")
@@ -150,12 +151,33 @@ class MemoryAccessTest extends AnyFlatSpec with ChiselScalatestTester {
             c.io.wb_memory_read_data.expect(0xFFFFFF92L.U(32.W))
         }
     }
-
     it should "correctly save register value into memory" in {
         test(new MemoryAccess).withAnnotations(TestAnnotations.annos) { c =>
-            c.io.alu_result.poke(1)
-            c.io.reg2_data.poke(1)
+            c.io.alu_result.poke(0)
+            c.io.reg2_data.poke(0x1234F678L.U(32.W))
+            c.io.memory_write_enable.poke(1)
+            c.io.funct3.poke(InstructionsTypeS.sw)
             c.clock.step()
+            c.io.memory_bundle.write_enable.expect(true.B)
+            c.io.memory_bundle.address.expect(0)
+            c.io.memory_bundle.write_data.expect(0x1234F678L.U(32.W))
+            c.io.memory_bundle.write_strobe(0).expect(true.B)
+            c.io.memory_bundle.write_strobe(1).expect(true.B)
+            c.io.memory_bundle.write_strobe(2).expect(true.B)
+            c.io.memory_bundle.write_strobe(3).expect(true.B)
+
+            c.io.alu_result.poke(0)
+            c.io.reg2_data.poke(0x1234F678L.U(32.W))
+            c.io.memory_write_enable.poke(1)
+            c.io.funct3.poke(InstructionsTypeS.sh)
+            c.clock.step()
+            c.io.memory_bundle.write_enable.expect(true.B)
+            c.io.memory_bundle.address.expect(0)
+            c.io.memory_bundle.write_data.expect(0x0000F678L.U(32.W))
+            c.io.memory_bundle.write_strobe(0).expect(true.B)
+            c.io.memory_bundle.write_strobe(1).expect(true.B)
+            c.io.memory_bundle.write_strobe(2).expect(false.B)
+            c.io.memory_bundle.write_strobe(3).expect(false.B)
         }
     }
 }
