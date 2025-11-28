@@ -46,7 +46,7 @@ class WriteBack extends Module {
   io.regs_write_data := MuxLookup(io.regs_write_source, io.alu_result)(
     Seq(
       RegWriteSource.Memory                 -> io.memory_read_data,
-      RegWriteSource.NextInstructionAddress -> io.instruction_address
+      RegWriteSource.NextInstructionAddress -> (io.instruction_address + 4.U)
     )
   )
 }
