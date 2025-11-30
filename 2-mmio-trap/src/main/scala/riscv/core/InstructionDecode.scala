@@ -225,16 +225,13 @@ class InstructionDecode extends Module {
   // - CSR instructions: Read from CSR
   // - JAL/JALR: Save PC+4 (return address)
   val wbSource = WireDefault(RegWriteSource.ALUResult)
-  // TODO: Determine when to write back from Memory
-  when(?) {
+  when(isLoad) {
     wbSource := RegWriteSource.Memory
   }
-  // TODO: Determine when to write back from CSR
-  .elsewhen(?) {
+  .elsewhen(isCsr) {
     wbSource := RegWriteSource.CSR
   }
-  // TODO: Determine when to write back PC+4
-  .elsewhen(?) {
+  .elsewhen(isJal || isJalr) {
     wbSource := RegWriteSource.NextInstructionAddress
   }
 
@@ -243,9 +240,8 @@ class InstructionDecode extends Module {
   // - Branch/AUIPC/JAL: Use PC (for calculating target address or PC+offset)
   //
   val aluOp1Sel = WireDefault(ALUOp1Source.Register)
-  // TODO: Determine when to use PC as first operand
   // Hint: Consider instructions that need PC-relative addressing
-  when(?) {
+  when(isBranch || isAuipc || isJal) {
     aluOp1Sel := ALUOp1Source.InstructionAddress
   }
 
@@ -255,9 +251,7 @@ class InstructionDecode extends Module {
   val needsImmediate =
     isLoad || isStore || isOpImm || isBranch || isLui || isAuipc || isJal || isJalr
   val aluOp2Sel = WireDefault(ALUOp2Source.Register)
-  // TODO: Determine when to use immediate as second operand
-  // Hint: Most instruction types except R-type use immediate
-  when(?) {
+  when(needsImmediate) {
     aluOp2Sel := ALUOp2Source.Immediate
   }
 
@@ -320,11 +314,10 @@ class InstructionDecode extends Module {
   //   Need to concatenate these parts then sign extend
   //   Hint: High bits at upper field, low bits at lower field
   //
-  // TODO: Complete S-type immediate extension
   val immS = Cat(
-    Fill(Parameters.DataBits - 12, instruction(?)),  // Sign extension
-    instruction(?),                                  // High 7 bits
-    instruction(?)                                   // Low 5 bits
+    Fill(Parameters.DataBits - 12, instruction(31)),  // Sign extension
+    instruction(31, 25),                                  // High 7 bits
+    instruction(11, 7)                                   // Low 5 bits
   )
 
   // B-type (13-bit): Used for BEQ, BNE, BLT branch instructions
@@ -333,14 +326,13 @@ class InstructionDecode extends Module {
   //   Requires sign extension to 32 bits
   //   Hint: B-type bit order is scrambled, must reorder per specification
   //
-  // TODO: Complete B-type immediate extension
   val immB = Cat(
     Fill(Parameters.DataBits - 13, instruction(31)), // Sign extension
-    instruction(?),                                  // bit [12]
-    instruction(?),                                  // bit [11]
-    instruction(?),                                  // bits [10:5]
-    instruction(?),                                  // bits [4:1]
-    ?                                                // bit [0] = 0 (alignment)
+    instruction(31),                                  // bit [12]
+    instruction(7),                                  // bit [11]
+    instruction(30, 25),                                  // bits [10:5]
+    instruction(11, 8),                                  // bits [4:1]
+    0.U                                                // bit [0] = 0 (alignment)
   )
 
   // U-type (20-bit): Used for LUI, AUIPC
@@ -355,14 +347,13 @@ class InstructionDecode extends Module {
   //   Requires sign extension to 32 bits
   //   Hint: J-type bit order is scrambled, similar to B-type
   //
-  // TODO: Complete J-type immediate extension
   val immJ = Cat(
     Fill(Parameters.DataBits - 21, instruction(31)), // Sign extension
-    instruction(?),                                  // bit [20]
-    instruction(?),                                  // bits [19:12]
-    instruction(?),                                  // bit [11]
-    instruction(?),                                  // bits [10:1]
-    ?                                                // bit [0] = 0 (alignment)
+    instruction(31),                                  // bit [20]
+    instruction(19, 12),                                  // bits [19:12]
+    instruction(20),                                  // bit [11]
+    instruction(30, 21),                                  // bits [10:1]
+    0.U                                                // bit [0] = 0 (alignment)
   )
 
   val immediate = MuxLookup(immKind.asUInt, 0.U(Parameters.DataBits.W))(
