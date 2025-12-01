@@ -166,18 +166,18 @@ class CSR extends Module {
   when(io.clint_access_bundle.direct_write_enable) {
     // Atomic update when CLINT triggers interrupt
     // TODO: Which CSRs does CLINT need to write?
-    ? := io.clint_access_bundle.mstatus_write_data
-    ? := io.clint_access_bundle.mepc_write_data
-    ? := io.clint_access_bundle.mcause_write_data
+    mstatus := io.clint_access_bundle.mstatus_write_data
+    mepc := io.clint_access_bundle.mepc_write_data
+    mcause := io.clint_access_bundle.mcause_write_data
   }.elsewhen(io.reg_write_enable_id) {
     // CPU CSR instruction write
     // TODO: Update corresponding CSR based on write address
     when(io.reg_write_address_id === CSRRegister.MSTATUS) {
-      mstatus := ?
+      mstatus := io.reg_write_data_ex
     }.elsewhen(io.reg_write_address_id === CSRRegister.MEPC) {
-      ? := io.reg_write_data_ex
+      mepc := io.reg_write_data_ex
     }.elsewhen(io.reg_write_address_id === CSRRegister.MCAUSE) {
-      ? := io.reg_write_data_ex
+      mcause := io.reg_write_data_ex
     }
   }
 
@@ -188,11 +188,11 @@ class CSR extends Module {
   when(io.reg_write_enable_id) {
     // TODO: Complete write logic for these CSRs
     when(io.reg_write_address_id === CSRRegister.MIE) {
-      ? := io.reg_write_data_ex
+      mie := io.reg_write_data_ex
     }.elsewhen(io.reg_write_address_id === CSRRegister.MTVEC) {
-      ? := io.reg_write_data_ex
+      mtvec := io.reg_write_data_ex
     }.elsewhen(io.reg_write_address_id === CSRRegister.MSCRATCH) {
-      ? := io.reg_write_data_ex
+      mscratch := io.reg_write_data_ex
     }
   }
 
