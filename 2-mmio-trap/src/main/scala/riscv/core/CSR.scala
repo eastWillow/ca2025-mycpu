@@ -125,18 +125,16 @@ class CSR extends Module {
   // - CycleH (0xC80): Cycle counter high 32 bits
   val regLUT =
     IndexedSeq(
-      // TODO: Complete CSR address to register mapping
-      CSRRegister.MSTATUS  -> ?,
-      CSRRegister.MIE      -> ?,
-      CSRRegister.MTVEC    -> ?,
-      CSRRegister.MSCRATCH -> ?,
-      CSRRegister.MEPC     -> ?,
-      CSRRegister.MCAUSE   -> ?,
+      CSRRegister.MSTATUS  -> mstatus,
+      CSRRegister.MIE      -> mie,
+      CSRRegister.MTVEC    -> mtvec,
+      CSRRegister.MSCRATCH -> mscratch,
+      CSRRegister.MEPC     -> mepc,
+      CSRRegister.MCAUSE   -> mcause,
 
       // 64-bit cycle counter split into high and low 32 bits
-      // TODO: Extract low 32 bits and high 32 bits from cycles
-      CSRRegister.CycleL   -> ?,
-      CSRRegister.CycleH   -> ?,
+      CSRRegister.CycleL   -> cycles(31, 0),
+      CSRRegister.CycleH   -> cycles(63, 32),
     )
   cycles := cycles + 1.U
 
