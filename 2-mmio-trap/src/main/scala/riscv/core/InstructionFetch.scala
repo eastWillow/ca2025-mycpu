@@ -58,7 +58,6 @@ class InstructionFetch extends Module {
   when(io.instruction_valid) {
     io.instruction := io.instruction_read_data
 
-    // TODO: Complete PC update logic with interrupt priority
     // Hint: Use nested multiplexer to implement priority: interrupt > jump > sequential
     // - Outermost multiplexer: Check interrupt condition
     //   - True: Use interrupt handler address
@@ -66,7 +65,9 @@ class InstructionFetch extends Module {
     // - Inner multiplexer: Check jump flag
     //   - True: Use jump target address
     //   - False: Sequential execution
-    pc := ?
+    pc := Mux(io.interrupt_assert, io.interrupt_handler_address,
+      Mux(io.jump_flag_id, io.jump_address_id, pc + 4.U)
+    )
 
   }.otherwise {
     // When instruction is invalid, hold PC and insert NOP (ADDI x0, x0, 0)
