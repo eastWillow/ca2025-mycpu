@@ -58,7 +58,6 @@ class MemoryAccess extends Module {
     // Select halfword based on bit 1 of address (word-aligned halfwords)
     val half = Mux(mem_address_index(1), Cat(bytes(3), bytes(2)), Cat(bytes(1), bytes(0)))
 
-    // TODO: Complete sign/zero extension for load operations
     // Hint:
     // - Use Fill to replicate a bit multiple times
     // - For sign extension: Fill with the sign bit (MSB)
@@ -69,40 +68,36 @@ class MemoryAccess extends Module {
     // to handle all possible byte positions (0, 1, 2, 3) in a 32-bit word
     io.wb_memory_read_data := MuxLookup(io.funct3, 0.U)(
       Seq(
-        // TODO: Complete LB (sign-extend byte)
         // Hint: Replicate sign bit, then concatenate with byte
         InstructionsTypeL.lb -> MuxLookup(mem_address_index, Cat(Fill(24, data(31)), data(31, 24)))(
           Seq(
-            0.U -> ?,
-            1.U -> ?,
-            2.U -> ?
+            0.U -> Cat(Fill(24, data(7)), data(7, 0)),
+            1.U -> Cat(Fill(24, data(15)), data(15, 8)),
+            2.U -> Cat(Fill(24, data(23)), data(23, 16))
           )
         ),
 
-        // TODO: Complete LBU (zero-extend byte)
         // Hint: Fill upper bits with zero, then concatenate with byte
         InstructionsTypeL.lbu -> MuxLookup(mem_address_index, Cat(Fill(24, 0.U), data(31, 24)))(
           Seq(
-            0.U -> ?,
-            1.U -> ?,
-            2.U -> ?
+            0.U -> Cat(Fill(24, 0.U), data(7, 0)),
+            1.U -> Cat(Fill(24, 0.U), data(15, 8)),
+            2.U -> Cat(Fill(24, 0.U), data(23, 16))
           )
         ),
 
-        // TODO: Complete LH (sign-extend halfword)
         // Hint: Replicate sign bit, then concatenate with halfword
         InstructionsTypeL.lh -> Mux(
           mem_address_index === 0.U,
-          ?,
-          ?
+          Cat(Fill(12, data(15)), data(15, 0)),
+          Cat(Fill(12, data(31)), data(31, 16))
         ),
 
-        // TODO: Complete LHU (zero-extend halfword)
         // Hint: Fill upper bits with zero, then concatenate with halfword
         InstructionsTypeL.lhu -> Mux(
           mem_address_index === 0.U,
-          ?,
-          ?
+          Cat(Fill(12, 0.U), data(15, 0)),
+          Cat(Fill(12, 0.U), data(31, 16))
         ),
 
         // LW: Load full word, no extension needed (completed example)
@@ -140,17 +135,16 @@ class MemoryAccess extends Module {
     // Optimized store logic: reduce combinational depth by simplifying shift operations
     // mem_address_index is already computed from address alignment (bits 1:0)
     when(io.funct3 === InstructionsTypeS.sb) {
-      // TODO: Complete store byte logic
       // Hint:
       // 1. Enable single byte strobe at appropriate position
       // 2. Shift byte data to correct position based on address
-      io.memory_bundle.write_strobe(?) := true.B
-      io.memory_bundle.write_data := io.reg2_data(?) << (mem_address_index << ?)
+      io.memory_bundle.write_strobe(mem_address_index) := true.B
+      io.memory_bundle.write_data := io.reg2_data(7, 0) << (mem_address_index << 3)
 
     }.elsewhen(io.funct3 === InstructionsTypeS.sh) {
       // TODO: Complete store halfword logic
       // Hint: Check address to determine lower/upper halfword position
-      when(mem_address_index(?) === 0.U) {
+      when(mem_address_index(1, 0) === 0.U) {
         // Lower halfword (bytes 0-1)
         // TODO: Enable strobes for bytes 0 and 1, no shifting needed
         for (i <- 0 until Parameters.WordSize / 2) {
