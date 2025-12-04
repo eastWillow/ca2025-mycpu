@@ -104,7 +104,7 @@ class Control extends Module {
     // 3. AND destination register is not x0
     // 4. AND destination register conflicts with ID source registers
     //
-    ((io.jump_instruction_id) && // Either:
+    ((io.jump_instruction_id || io.memory_read_enable_ex) && // Either:
       // - Jump in ID needs register value, OR
       // - Load in EX (load-use hazard)
       io.rd_ex =/= 0.U &&                                 // Destination is not x0
@@ -135,7 +135,7 @@ class Control extends Module {
         // Even with forwarding, load result needs extra cycle to reach ID stage
   ) {
     // Stall action: Insert bubble and freeze pipeline
-    // TODO: Which control signals need to be set to insert a bubble?
+    // Confirm: Which control signals need to be set to insert a bubble?
     // Hint:
     // - Flush ID/EX register (insert bubble)
     // - Freeze PC (don't fetch next instruction)
@@ -148,7 +148,7 @@ class Control extends Module {
     // ============ Control Hazard (Branch Taken) ============
     // Branch resolved in ID stage - only 1 cycle penalty
     // Only flush IF stage (not ID) since branch resolved early
-    // TODO: Which stage needs to be flushed when branch is taken?
+    // Confirm Done: Which stage needs to be flushed when branch is taken?
     // Hint: Branch resolved in ID stage, discard wrong-path instruction
     io.if_flush := true.B // Flush IF: discard wrong-path instruction
     // Note: No ID flush needed - branch already resolved in ID!
