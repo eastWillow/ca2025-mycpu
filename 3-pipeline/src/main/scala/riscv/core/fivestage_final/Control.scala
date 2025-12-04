@@ -104,11 +104,11 @@ class Control extends Module {
     // 3. AND destination register is not x0
     // 4. AND destination register conflicts with ID source registers
     //
-    ((?) && // Either:
+    ((io.jump_instruction_id || io.memory_read_enable_ex) && // Either:
       // - Jump in ID needs register value, OR
       // - Load in EX (load-use hazard)
-      ? =/= 0.U &&                                 // Destination is not x0
-      (?)) // Destination matches ID source
+      io.rd_ex =/= 0.U &&                                 // Destination is not x0
+      (io.rd_ex === io.rs1_id || io.rd_ex === io.rs2_id)) // Destination matches ID source
     //
     // Examples triggering Condition 1:
     // a) Jump dependency: ADD x1, x2, x3 [EX]; JALR x0, x1, 0 [ID] → stall
@@ -125,32 +125,32 @@ class Control extends Module {
         // 3. Destination register is not x0
         // 4. Destination register conflicts with ID source registers
         //
-        (? &&                              // Jump instruction in ID
-          ? &&                          // Load instruction in MEM
-          ? =/= 0.U &&                                  // Load destination not x0
-          (?)) // Load dest matches jump source
+        (io.jump_instruction_id &&                              // Jump instruction in ID
+          io.memory_read_enable_mem &&                          // Load instruction in MEM
+          io.rd_mem =/= 0.U &&                                  // Load destination not x0
+          (io.rd_mem === io.rs1_id || io.rd_mem === io.rs2_id)) // Load dest matches jump source
         //
         // Example triggering Condition 2:
         // LW x1, 0(x2) [MEM]; NOP [EX]; JALR x0, x1, 0 [ID]
         // Even with forwarding, load result needs extra cycle to reach ID stage
   ) {
     // Stall action: Insert bubble and freeze pipeline
-    // TODO: Which control signals need to be set to insert a bubble?
+    // Confirm: Which control signals need to be set to insert a bubble?
     // Hint:
     // - Flush ID/EX register (insert bubble)
     // - Freeze PC (don't fetch next instruction)
     // - Freeze IF/ID (hold current fetch result)
-    io.id_flush := ?
-    io.pc_stall := ?
-    io.if_stall := ?
+    io.id_flush := true.B // Insert NOP/bubble into ID/EX register
+    io.pc_stall := true.B // Freeze PC (hold next instruction fetch)
+    io.if_stall := true.B // Freeze IF/ID (hold current instruction)
 
   }.elsewhen(io.jump_flag) {
     // ============ Control Hazard (Branch Taken) ============
     // Branch resolved in ID stage - only 1 cycle penalty
     // Only flush IF stage (not ID) since branch resolved early
-    // TODO: Which stage needs to be flushed when branch is taken?
+    // Confirm Done: Which stage needs to be flushed when branch is taken?
     // Hint: Branch resolved in ID stage, discard wrong-path instruction
-    io.if_flush := ?
+    io.if_flush := true.B // Flush IF: discard wrong-path instruction
     // Note: No ID flush needed - branch already resolved in ID!
     // This is the key optimization: 1-cycle branch penalty vs 2-cycle
   }
