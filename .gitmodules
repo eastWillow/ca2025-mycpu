@@ -1,0 +1,3 @@
+[submodule "ca2025-quizzes"]
+	path = ca2025-quizzes
+	url = https://github.com/eastWillow/ca2025-quizzes.git
