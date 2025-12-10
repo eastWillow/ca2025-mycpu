@@ -170,5 +170,47 @@ class PipelineProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         c.io.mem_debug_read_data.expect(0x2022L.U)
       }
     }
+
+    it should "calculate Tower of Hanoi" in {
+      runProgram("q2_problemA.asmbin", cfg) { c =>
+        for (i <- 1 to 50) {
+          c.clock.step(1000)
+          c.io.mem_debug_read_address.poke((i * 4).U)
+        }
+        c.io.regs_debug_read_address.poke(5.U) // reg X5 (t0)
+        c.io.regs_debug_read_data.expect(8.U)
+        c.io.regs_debug_read_address.poke(6.U) // reg X6 (t0)
+        c.io.regs_debug_read_data.expect(111.U)
+        c.io.regs_debug_read_address.poke(6.U) // reg X6 (t0)
+        c.io.regs_debug_read_data.expect(111.U)
+        c.io.regs_debug_read_address.poke(30.U) // reg X30 (t5)
+        c.io.regs_debug_read_data.expect(1.U)
+        c.io.regs_debug_read_address.poke(31.U) // reg X31 (t6)
+        c.io.regs_debug_read_data.expect(5.U)
+
+        c.io.mem_debug_read_address.poke(0.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00434101.U) // Move Disk 1 from A to C
+        c.io.mem_debug_read_address.poke(4.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00424102.U) // Move Disk 2 from A to B
+        c.io.mem_debug_read_address.poke(8.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00424301.U) // Move Disk 1 from C to B
+        c.io.mem_debug_read_address.poke(12.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00434103.U) // Move Disk 3 from A to C
+        c.io.mem_debug_read_address.poke(16.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00414201.U) // Move Disk 1 from B to A
+        c.io.mem_debug_read_address.poke(20.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00434202.U) // Move Disk 2 from B to C
+        c.io.mem_debug_read_address.poke(24.U)
+        c.clock.step()
+        c.io.mem_debug_read_data.expect(0x00434101.U) // Move Disk 1 from A to C
+      }
+    }
+
   }
 }
