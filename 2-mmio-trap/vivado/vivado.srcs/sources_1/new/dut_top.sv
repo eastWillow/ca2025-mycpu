@@ -1,51 +1,52 @@
-`timescale 100ns / 10ns
+`timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company:
-// Engineer:
-//
-// Create Date: 12/13/2025 12:07:11 PM
-// Design Name:
-// Module Name: tb_top
-// Project Name:
-// Target Devices:
-// Tool Versions:
-// Description:
-//
-// Dependencies:
+// Company: 
+// Engineer: 
+// 
+// Create Date: 12/13/2025 09:55:30 PM
+// Design Name: 
+// Module Name: dut_top
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
 // hexdump -v -e '1/4 "%08x\n"' 2-mmio-trap/src/main/resources/fibonacci.asmbin > 2-mmio-trap/vivado/fibonacci.txt
 // sbt "project mmioTrap" "runMain board.verilator.VerilogGenerator"
 // Revision:
 // Revision 0.01 - File Created
 // Additional Comments:
-//
+// 
 //////////////////////////////////////////////////////////////////////////////////
 
-
-module tb_top();
-    logic sys_clk;
-    initial sys_clk = 0;
-    always #5 sys_clk = ~sys_clk; // 100MHz For clock wiz
+// Copy From tb_top.sv
+// Repleace the Simulation Signal with Real Signal
+module dut_top(
+    input sys_clk,
+    input clk_wiz_reset,
+    output [7:0]led
+    );
     
     //Clock Wizard
     logic locked;
-//    logic cpu_clock;
+    reg cpu_clock;
     logic bram_clock;
-    logic clk_wiz_reset;
     
     // System reset
     logic reset;
-    
+
     clk_wiz_0 u_clk_gen (
         .clk_in1(sys_clk),      // 100 MHz From ARTY7-35T on Board
-        .reset(clk_wiz_reset),  //
-        .clk_out1(bram_clock),  // 100 MHz for BRAM
-//        .clk_out2(cpu_clock),   // 20 MHz For CPU
+        .reset(!clk_wiz_reset), //
+        .clk_out1(bram_clock),  // 50 MHz for BRAM
+//        .clk_out2(cpu_clock),   // 10 MHz For CPU
         .locked(locked)         //
     );
     
+    // Cpu Clock From BRAM Clock
     reg [2:0] counter;
     reg cpu_clock;
-    
     always @(posedge bram_clock) begin
         if (clk_wiz_reset) begin
             counter <= 0;
@@ -60,25 +61,16 @@ module tb_top();
             end
         end
     end
-    
-    initial begin
-        // Reset Clock Wizard
-        cpu_clock = 0;
-        clk_wiz_reset = 1;
-        #100;
-        clk_wiz_reset = 0;
-    end
-    
+
     // wait clock wizard lock
-    assign reset = (locked == 0) || clk_wiz_reset;
-    
+    assign reset = (locked == 0) || !clk_wiz_reset;
+    assign io_instruction_valid = !reset;
     // --------------------------------------------------------
     // CPU Signals
     // --------------------------------------------------------
     // Instruction Fetch
     logic [31:0] io_instruction_address;
     logic [31:0] io_instruction;
-    logic io_instruction_valid;
 
     // Data Memory Access
     logic [31:0] io_memory_bundle_address;
@@ -94,11 +86,10 @@ module tb_top();
     logic [2:0]  io_deviceSelect;
     logic [31:0] io_regs_debug_read_address;
     logic [31:0] io_regs_debug_read_data;
-
-    // --------------------------------------------------------
-    // [New] Block Memory Generator Instantiation
-    // --------------------------------------------------------
     
+    // --------------------------------------------------------
+    // Block Memory Generator Instantiation
+    // --------------------------------------------------------
     // =========================================================================
     //  Memory Decoder
     // =========================================================================
@@ -169,41 +160,14 @@ module tb_top();
 
     logic test_passed;
     logic [31:0] result_data;
-    
-    initial begin        
-        io_instruction_valid = 0;
-        io_regs_debug_read_address = 0;
-        test_passed = 0;
-        result_data = 0;
-        
-        wait(reset == 0); // Wait for Reset Release
-//        repeat(10) @(posedge cpu_clock);
-        
-        io_instruction_valid = 1;
-        
-        #3200000;
-        
-        // Check Result
-        if (test_passed) begin
-            $display("=================================================");
-            $display(" PASS: Fibonacci(10) calculation correct! (%0d) ", result_data);
-            $display("=================================================");
-        end else begin
-            $display("=================================================");
-            $display(" FAIL: Timeout or result incorrect. Last Addr: %h", io_memory_bundle_address);
-            $display("=================================================");
-        end
-        $finish;
-    end
+    assign led = result_data[7:0];
 
     always @(posedge cpu_clock) begin
             if (io_memory_bundle_write_enable && (io_memory_bundle_address == 32'h4)) begin
             // catch write mem address 0x4
+            result_data = io_memory_bundle_write_data;
             if (io_memory_bundle_write_data == 32'h37) begin
                 test_passed = 1;
-                result_data = io_memory_bundle_write_data;
-            end else begin
-                $display("[Monitor] Write to 0x4 detected but value is %h (Expected 0x37)", io_memory_bundle_write_data);
             end
         end
     end
@@ -230,4 +194,5 @@ module tb_top();
         .io_regs_debug_read_address(io_regs_debug_read_address),
         .io_regs_debug_read_data(io_regs_debug_read_data)
     );
+
 endmodule
