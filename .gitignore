@@ -64,3 +64,5 @@ test_run_dir/
 **/*.hw
 **/*.ip_user_files
 **/*.sim
+**/*.runs
+**/*.gen

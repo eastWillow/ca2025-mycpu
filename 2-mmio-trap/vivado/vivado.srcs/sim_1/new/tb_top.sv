@@ -22,9 +22,35 @@
 
 
 module tb_top();
-    logic clock;
+    logic sys_clk;
+    initial sys_clk = 0;
+    always #5 sys_clk = ~sys_clk; // 100MHz
+    
+    //Clock Wizard
+    logic cpu_clock;
+    logic locked;
+    logic clk_wiz_reset;
+    
+    // System reset
     logic reset;
-
+    
+    clk_wiz_0 u_clk_gen (
+        .clk_in1(sys_clk),      //
+        .reset(clk_wiz_reset),  //
+        .clk_out1(cpu_clock),   //
+        .locked(locked)         //
+    );
+    
+    initial begin
+        // Reset Clock Wizard
+        clk_wiz_reset = 1;
+        #100;
+        clk_wiz_reset = 0;
+    end
+    
+    // wait clock wizard lock
+    assign reset = (locked == 0) || clk_wiz_reset;
+    
     // Instruction Fetch
     logic [31:0] io_instruction_address;
     logic [31:0] io_instruction;
@@ -51,13 +77,17 @@ module tb_top();
     logic [31:0] ram [0:32'h3FFFFF];
     initial begin
         $readmemh("../../../../fibonacci.txt", ram, (32'h1000 / 4));
-        clock = 0;
-        reset = 1;
+        
         io_instruction_valid = 0;
         io_regs_debug_read_address = 0;
-        #10 reset = 0;
-        #10 io_instruction_valid = 1;
+        
+        wait(reset == 0); // wait until the clock wizard stablize
+        repeat(10) @(posedge cpu_clock);
+        
+        io_instruction_valid = 1;
+        
         #100000;
+        
         if (ram[4/4] == 32'h37) begin
             $display("=================================================");
             $display(" PASS: Fibonacci(10) calculation correct! (55) ");
@@ -69,8 +99,6 @@ module tb_top();
         end
         $finish;
     end
-
-    always #5 clock = ~clock;
 
     //Instruction Fetch
     always @(*) begin
@@ -89,7 +117,7 @@ module tb_top();
     end
 
     //Data Store with Strobes
-    always @(posedge clock) begin
+    always @(posedge cpu_clock) begin
         if (io_memory_bundle_write_enable && (io_memory_bundle_address[31:2] < 32'h400000)) begin
             if (io_memory_bundle_write_strobe_0)
                 ram[io_memory_bundle_address[31:2]][7:0]   <= io_memory_bundle_write_data[7:0];
@@ -103,7 +131,7 @@ module tb_top();
     end
 
     Top u_Top (
-        .clock(clock),
+        .clock(cpu_clock),
         .reset(reset),
 
         .io_instruction_address(io_instruction_address),
