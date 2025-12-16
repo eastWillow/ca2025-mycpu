@@ -39,8 +39,7 @@ module dut_top(
     clk_wiz_0 u_clk_gen (
         .clk_in1(sys_clk),      // 100 MHz From ARTY7-35T on Board
         .reset(!clk_wiz_reset), //
-        .clk_out1(bram_clock),  // 5 MHz for BRAM
-//        .clk_out2(cpu_clock),   // 10 MHz For CPU
+        .clk_out1(bram_clock),  // 25 MHz for BRAM
         .locked(locked)         //
     );
     
