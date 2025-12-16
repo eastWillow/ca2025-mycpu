@@ -75,7 +75,8 @@ module dut_top(
     // Instruction Fetch
     logic [31:0] io_instruction_address;
     logic [31:0] io_instruction;
-
+    logic io_instruction_valid;
+    
     // Data Memory Access
     logic [31:0] io_memory_bundle_address;
     logic [31:0] io_memory_bundle_write_data;
@@ -169,7 +170,7 @@ module dut_top(
     // Mapping: 0x003F0000 - 0x00400000 (Vritual) -> 0x0000 - 0xFFFF (Physical)
     logic [31:0] stack_rdata;
     // 0x003FFFFC (Address Aliasing) -> 0xFFFC
-    blk_mem_gen_0 u_bram_stack (
+    blk_mem_gen_stack u_bram_stack (
         // Stack BRAM Port A is not used.
         .clka(bram_clock),
         .ena(1'b0),
@@ -234,7 +235,8 @@ module dut_top(
 
         .io_deviceSelect(io_deviceSelect),
         .io_regs_debug_read_address(io_regs_debug_read_address),
-        .io_regs_debug_read_data(io_regs_debug_read_data)
+        .io_regs_debug_read_data(io_regs_debug_read_data),
+        .io_interrupt_flag(0)
     );
 
 endmodule
