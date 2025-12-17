@@ -45,7 +45,7 @@ module tb_top();
         .locked(locked)         //
     );
     
-    reg [2:0] counter;
+    reg [4:0] counter;
     logic cpu_clock_raw;
     logic cpu_clock;
     always @(posedge bram_clock) begin
@@ -53,7 +53,7 @@ module tb_top();
             counter <= 0;
             cpu_clock_raw <= 0;
         end else begin
-            if (counter == 4) begin 
+            if (counter == 9) begin 
                 counter <= 0;
                 cpu_clock_raw <= 1;
             end else begin 

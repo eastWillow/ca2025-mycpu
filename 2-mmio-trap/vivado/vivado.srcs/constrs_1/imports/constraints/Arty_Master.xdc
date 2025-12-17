@@ -9,9 +9,9 @@ set_property -dict { PACKAGE_PIN E3    IOSTANDARD LVCMOS33 } [get_ports { sys_cl
 #create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports { sys_clk }];
 
 create_generated_clock -name cpu_clk_div \
-    -source [get_nets bram_clock] \
+    -source [get_pins cpu_clock_raw_reg/C] \
     -divide_by 10 \
-    [get_nets cpu_clock]
+    [get_pins cpu_clock_raw_reg/Q]
     
 ##Switches
 
@@ -73,8 +73,8 @@ set_property -dict { PACKAGE_PIN J15   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[
 
 ##Pmod Header JC
 
-set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33 } [get_ports { VGA_HS_O }]; #IO_L20P_T3_A08_D24_14 Sch=jc_p[1]
-set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS33 } [get_ports { VGA_VS_O }]; #IO_L20N_T3_A07_D23_14 Sch=jc_n[1]
+set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33 } [get_ports { io_vga_hsync }]; #IO_L20P_T3_A08_D24_14 Sch=jc_p[1]
+set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS33 } [get_ports { io_vga_vsync }]; #IO_L20N_T3_A07_D23_14 Sch=jc_n[1]
 #set_property -dict { PACKAGE_PIN V10   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[2] }]; #IO_L21P_T3_DQS_14 Sch=jc_p[2]
 #set_property -dict { PACKAGE_PIN V11   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[3] }]; #IO_L21N_T3_DQS_A06_D22_14 Sch=jc_n[2]
 set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[0] }]; #IO_L22P_T3_A05_D21_14 Sch=jc_p[3]

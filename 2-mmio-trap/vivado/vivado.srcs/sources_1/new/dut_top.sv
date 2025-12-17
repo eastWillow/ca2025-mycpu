@@ -12,7 +12,8 @@
 // Description: 
 // 
 // Dependencies: 
-// hexdump -v -e '1/4 "%08x\n"' 2-mmio-trap/src/main/resources/fibonacci.asmbin > 2-mmio-trap/vivado/fibonacci.txt
+// hexdump -v -e '1/4 "%08x\n"' 2-mmio-trap/src/main/resources/nyancat.asmbin > 2-mmio-trap/vivado/nyancat.txt
+// Use Repleace '\n' to ',' in nyancat.txt to generate the nyancat.coe file
 // sbt "project mmioTrap" "runMain board.verilator.VerilogGenerator"
 // Revision:
 // Revision 0.01 - File Created
@@ -26,13 +27,18 @@ module dut_top(
     input sys_clk,
     input clk_wiz_reset,
     input raw_cpu_reset,
-    output [7:0]led
+    output [7:0]led,
+    output io_vga_vsync,
+    output io_vga_hsync,
+    output [3:0]VGA_R,
+    output [3:0]VGA_G,
+    output [3:0]VGA_B
     );
     
     //Clock Wizard
     logic locked;
     logic bram_clock;
-    
+    logic io_vga_pixclk;
     // System reset
     logic reset;
 
@@ -40,6 +46,7 @@ module dut_top(
         .clk_in1(sys_clk),      // 100 MHz From ARTY7-35T on Board
         .reset(!clk_wiz_reset), //
         .clk_out1(bram_clock),  // 25 MHz for BRAM
+        .clk_out2(io_vga_pixclk),  // 31.5 MHz for VGA (640 x 480 @ 72Hz DMT)
         .locked(locked)         //
     );
     
@@ -194,26 +201,34 @@ module dut_top(
 
     logic test_passed;
     logic [31:0] result_data;
-    assign led[7:0] = result_data[7:0];
-
-    always @(posedge cpu_clock) begin
-            if (raw_cpu_reset) begin
-                result_data <= 0;
-            end else begin
-                if (io_memory_bundle_write_enable && (io_memory_bundle_address == 32'h4)) begin
-                // catch write mem address 0x4
-                result_data <= io_memory_bundle_write_data;
-                if (io_memory_bundle_write_data == 32'h37) begin
-                    test_passed <= 1;
-                end
-            end
-        end
-    end
     
     logic cpu_reset;
     always @(posedge cpu_clock) begin
         cpu_reset <= raw_cpu_reset;
     end
+    
+// From  sim.cpp
+// Color conversion: 2-bit VGA channel → 8-bit RGB
+// Maps 2-bit color values to 8-bit with even spacing:
+//  0b00 → 0   (0%)
+//  0b01 → 85  (33%)
+//  0b10 → 170 (67%)
+//  0b11 → 255 (100%)
+//  Orignal is * 85
+//  FPGA Output VGA is 4 bit
+//  {bit1, bit0, bit1, bit0}
+//  00 -> 0000 (0)
+//  01 -> 0101 (5)
+//  10 -> 1010 (10)
+//  11 -> 1111 (15)
+    logic[5:0] io_vga_rrggbb;
+    assign VGA_R[3:0] = {2{io_vga_rrggbb[1:0]}};
+    assign VGA_G[3:0] = {2{io_vga_rrggbb[3:2]}};
+    assign VGA_B[3:0] = {2{io_vga_rrggbb[5:4]}};
+    
+    assign led[5:0] = io_vga_rrggbb;
+    assign led[6] = io_vga_vsync;
+    assign led[7] = io_vga_hsync;
     
     Top u_Top (
         .clock(cpu_clock),
@@ -236,7 +251,12 @@ module dut_top(
         .io_deviceSelect(io_deviceSelect),
         .io_regs_debug_read_address(io_regs_debug_read_address),
         .io_regs_debug_read_data(io_regs_debug_read_data),
-        .io_interrupt_flag(0)
+        .io_interrupt_flag(0),
+        
+        .io_vga_pixclk(io_vga_pixclk),
+        .io_vga_vsync(io_vga_vsync),
+        .io_vga_hsync(io_vga_hsync),
+        .io_vga_rrggbb(io_vga_rrggbb)
     );
 
 endmodule
