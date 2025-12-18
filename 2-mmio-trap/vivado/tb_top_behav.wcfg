@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="tb_top_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="tb_top" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0.000000000000 s"></ZoomStartTime>
+      <ZoomEndTime time="8.060000000001 s"></ZoomEndTime>
+      <Cursor1Time time="0.964540788919 s"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="395"></NameColumnWidth>
+      <ValueColumnWidth column_width="111"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="34" />
+   <wave_markers>
+      <marker label="" time="39783401768" />
+   </wave_markers>
+   <wvobject type="logic" fp_name="/tb_top/u_Top/vga_io_bundle_write_enable">
+      <obj_property name="ElementShortName">vga_io_bundle_write_enable</obj_property>
+      <obj_property name="ObjectShortName">vga_io_bundle_write_enable</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/vga_io_bundle_write_data">
+      <obj_property name="ElementShortName">vga_io_bundle_write_data[31:0]</obj_property>
+      <obj_property name="ObjectShortName">vga_io_bundle_write_data[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/io_instruction">
+      <obj_property name="ElementShortName">io_instruction[31:0]</obj_property>
+      <obj_property name="ObjectShortName">io_instruction[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_0">
+      <obj_property name="ElementShortName">registers_0[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_0[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_1">
+      <obj_property name="ElementShortName">registers_1[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_1[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_2">
+      <obj_property name="ElementShortName">registers_2[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_2[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_3">
+      <obj_property name="ElementShortName">registers_3[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_3[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_4">
+      <obj_property name="ElementShortName">registers_4[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_4[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_5">
+      <obj_property name="ElementShortName">registers_5[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_5[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_6">
+      <obj_property name="ElementShortName">registers_6[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_6[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_7">
+      <obj_property name="ElementShortName">registers_7[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_7[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_8">
+      <obj_property name="ElementShortName">registers_8[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_8[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_9">
+      <obj_property name="ElementShortName">registers_9[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_9[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_10">
+      <obj_property name="ElementShortName">registers_10[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_10[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_11">
+      <obj_property name="ElementShortName">registers_11[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_11[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_12">
+      <obj_property name="ElementShortName">registers_12[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_12[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_13">
+      <obj_property name="ElementShortName">registers_13[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_13[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_14">
+      <obj_property name="ElementShortName">registers_14[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_14[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_15">
+      <obj_property name="ElementShortName">registers_15[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_15[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_16">
+      <obj_property name="ElementShortName">registers_16[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_16[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_17">
+      <obj_property name="ElementShortName">registers_17[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_17[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_18">
+      <obj_property name="ElementShortName">registers_18[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_18[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_19">
+      <obj_property name="ElementShortName">registers_19[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_19[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_20">
+      <obj_property name="ElementShortName">registers_20[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_20[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_21">
+      <obj_property name="ElementShortName">registers_21[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_21[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_22">
+      <obj_property name="ElementShortName">registers_22[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_22[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_23">
+      <obj_property name="ElementShortName">registers_23[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_23[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_24">
+      <obj_property name="ElementShortName">registers_24[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_24[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_25">
+      <obj_property name="ElementShortName">registers_25[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_25[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_26">
+      <obj_property name="ElementShortName">registers_26[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_26[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_27">
+      <obj_property name="ElementShortName">registers_27[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_27[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_28">
+      <obj_property name="ElementShortName">registers_28[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_28[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_29">
+      <obj_property name="ElementShortName">registers_29[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_29[31:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_top/u_Top/cpu/regs/registers_30">
+      <obj_property name="ElementShortName">registers_30[31:0]</obj_property>
+      <obj_property name="ObjectShortName">registers_30[31:0]</obj_property>
+   </wvobject>
+</wave_config>
