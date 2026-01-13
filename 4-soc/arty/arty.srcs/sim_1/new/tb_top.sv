@@ -6,6 +6,26 @@ Step 0. cd 4-soc
 Step 1. CROSS_COMPILE=riscv-none-elf- make check-uart
 Step 2. cd csrc
 Step 3. hexdump -v -e '1/4 "%08x" "\n"' uart.asmbin > program.mem
+
+
+launch_simulation  -scripts_only
+
+edit : simulate.sh
+comment out -view and -log
+
+edit : tb_top.tcl
+
+open_vcd my_trace.vcd
+log_vcd /tb_top/io_vga_hsync
+log_vcd /tb_top/io_vga_vsync
+log_vcd /tb_top/io_vga_activevideo
+log_vcd /tb_top/io_vga_rrggbb
+log_vcd /tb_top/io_vga_x_pos
+log_vcd /tb_top/io_vga_y_pos
+run 6ms
+close_vcd
+quit
+
 */
 
 
@@ -134,7 +154,7 @@ module tb_top;
     // -------------------------------------------------------------------------
     initial begin
         clock = 0;
-        forever #5 clock = ~clock;
+        forever #1 clock = ~clock;
     end
 
     logic [1:0] vga_div;
@@ -144,15 +164,10 @@ module tb_top;
     end
 
     always_ff @(posedge clock) begin
-        if (reset) begin
+        vga_div <= vga_div + 1;
+        if (vga_div == 1) begin 
             vga_div <= 0;
-            io_vga_pixclk <= 0;
-        end else begin
-            vga_div <= vga_div + 1;
-            if (vga_div == 3) begin 
-                vga_div <= 0;
-                io_vga_pixclk <= ~io_vga_pixclk;
-            end
+            io_vga_pixclk <= ~io_vga_pixclk;
         end
     end
 
