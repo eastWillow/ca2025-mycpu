@@ -33,6 +33,7 @@ hs_err_pid*
 
 ### Simulation artifacts
 */csrc/*.asmbin
+*/csrc/*.mem
 test_run_dir/
 */test_run_dir/
 *.vcd
@@ -60,3 +61,8 @@ test_run_dir/
 **/src/test/scala/riscv/compliance/ComplianceTest.scala
 **/src/main/resources/test.asmbin
 **/src/main/resources/test_*.asmbin
+
+**/**.ip_user_files/**
+**/**.sim/**
+**/**.cache/**
+**/**.gen/**
