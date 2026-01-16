@@ -78,8 +78,14 @@ module tb_top;
     // -------------------------------------------------------------------------
     // Signals
     // -------------------------------------------------------------------------
-    logic clock;
-    logic reset;
+    logic clk_cpu;    // 100 MHz
+    logic clk_vga;    // 31.5 MHz
+    logic locked;
+    logic mmcm_reset;
+    logic sys_reset;
+    logic ck_rst;       //ARTY REST Push is Low
+
+    logic CLK100MHZ;
 
     logic        io_instruction_valid;
     logic [31:0] io_instruction_address;
@@ -103,7 +109,6 @@ module tb_top;
     logic        io_uart_rxd;
     
     // VGA signals
-    logic        io_vga_pixclk;
     logic        io_vga_vsync;
     logic        io_vga_hsync;
     logic        io_vga_activevideo;
@@ -119,8 +124,8 @@ module tb_top;
     // DUT Instantiation
     // -------------------------------------------------------------------------
     Top dut (
-        .clock                         (clock),
-        .reset                         (reset),
+        .clock                         (clk_cpu),
+        .reset                         (sys_reset),
         .io_instruction_valid          (io_instruction_valid),
         .io_instruction                (io_instruction),
         .io_instruction_req            (io_instruction_req),
@@ -138,7 +143,7 @@ module tb_top;
         .io_signal_interrupt           (io_signal_interrupt),
         .io_uart_txd                   (io_uart_txd),
         .io_uart_rxd                   (io_uart_rxd),
-        .io_vga_pixclk                 (io_vga_pixclk),
+        .io_vga_pixclk                 (clk_vga),
         .io_vga_vsync                  (io_vga_vsync),
         .io_vga_hsync                  (io_vga_hsync),
         .io_vga_activevideo            (io_vga_activevideo),
@@ -153,26 +158,27 @@ module tb_top;
     // Clock & Reset
     // -------------------------------------------------------------------------
     initial begin
-        clock = 0;
-        forever #1 clock = ~clock;
+        CLK100MHZ = 0;
+        forever #1 CLK100MHZ = ~CLK100MHZ;
     end
+    
+    // Arty Reset Button is Active Low (0 = Reset).
+    // MMCM Reset is usually Active High (1 = Reset).
+    assign mmcm_reset = ~ck_rst;
 
-    logic [1:0] vga_div;
+    // System Reset: Assert if button pressed OR clock not stable
+    assign sys_reset = mmcm_reset | ~locked;
+
+    clk_wiz_0 u_clk_wiz (
+        .clk_cpu (clk_cpu),
+        .clk_vga (clk_vga),
+        .reset   (mmcm_reset),
+        .locked  (locked),
+        .clk_in1 (CLK100MHZ)
+    );
+
     initial begin
-        io_vga_pixclk = 0;
-        vga_div = 0;
-    end
-
-    always_ff @(posedge clock) begin
-        vga_div <= vga_div + 1;
-        if (vga_div == 1) begin 
-            vga_div <= 0;
-            io_vga_pixclk <= ~io_vga_pixclk;
-        end
-    end
-
-    initial begin
-        reset = 1;
+        ck_rst = 0;
         io_instruction_valid = 1;
         io_signal_interrupt = 0;
         
@@ -189,8 +195,8 @@ module tb_top;
         $display("       Initial SP   : 0x%08x", EXPECTED_SP);
         $display("=============================================================\n");
 
-        repeat(10) @(posedge clock);
-        reset = 0;
+        repeat(10) @(posedge CLK100MHZ);
+        ck_rst = 1;
     end
 
     // -------------------------------------------------------------------------
@@ -236,7 +242,7 @@ module tb_top;
     // -------------------------------------------------------------------------
     // INSTRUCTION FETCH
     // -------------------------------------------------------------------------
-    always_ff @(posedge clock) begin
+    always_ff @(posedge clk_cpu) begin
         logic [1:0] sel;
         logic [31:0] word_idx;
         
@@ -279,7 +285,7 @@ module tb_top;
         else rw_word_idx = 0;
     end
 
-    always_ff @(posedge clock) begin
+    always_ff @(posedge clk_cpu) begin
         io_mem_slave_read_valid <= 0;
 
         // --- READ ---
@@ -350,10 +356,10 @@ module tb_top;
     initial begin
         forever begin
             @(negedge io_uart_txd);
-            repeat (CYCLES_PER_BIT + (CYCLES_PER_BIT/2)) @(posedge clock);
+            repeat (CYCLES_PER_BIT + (CYCLES_PER_BIT/2)) @(posedge clk_cpu);
             for (int i = 0; i < 8; i++) begin
                 uart_byte[i] = io_uart_txd;
-                repeat (CYCLES_PER_BIT) @(posedge clock);
+                repeat (CYCLES_PER_BIT) @(posedge clk_cpu);
             end
             if (uart_byte >= 32 && uart_byte <= 126) $write("%c", uart_byte);
             else if (uart_byte == 10 || uart_byte == 13) $write("\n");
@@ -364,7 +370,7 @@ module tb_top;
     integer frame_count = 0;
     integer active_pixels = 0;
     logic prev_vsync;
-    always_ff @(posedge clock) begin
+    always_ff @(posedge clk_cpu) begin
         if (io_vga_vsync && !prev_vsync) begin
             frame_count++;
             if (frame_count % 60 == 0) begin
@@ -375,14 +381,14 @@ module tb_top;
         prev_vsync <= io_vga_vsync;
     end
 
-    always_ff @(posedge clock) begin
-        if (vga_div == 0 && !reset) begin
+    always_ff @(posedge clk_cpu) begin
+        if (!sys_reset) begin
             if (io_vga_activevideo) active_pixels++;
         end
     end
 
     initial begin
-        repeat (50_000_000) @(posedge clock);
+        repeat (50_000_000) @(posedge clk_cpu);
         $display("\nTIMEOUT: Max cycles reached without magic write.");
         $finish;
     end
