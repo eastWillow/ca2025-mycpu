@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 `timescale 1ns / 1ps
 
+
 module dut_top (
     input wire CLK100MHZ,      // Arty 100MHz Oscillator
     input wire ck_rst,         // Arty Reset Button (Active Low)
@@ -10,15 +11,30 @@ module dut_top (
     output wire uart_rxd_out,  // FPGA TX
 
     // VGA Pmod (Headers JB/JC)
-    output wire [3:0] vga_r,
-    output wire [3:0] vga_g,
-    output wire [3:0] vga_b,
-    output wire       vga_hs,
-    output wire       vga_vs,
+    output wire [3:0] VGA_R,
+    output wire [3:0] VGA_G,
+    output wire [3:0] VGA_B,
+    output wire       VGA_HS_O,
+    output wire       VGA_VS_O,
     
     // Debug LEDs
-    output wire [3:0] led
+    output reg [7:0] led
 );
+
+    // -------------------------------------------------------------------------
+    // Parameters & Constants (Matching tb_top)
+    // -------------------------------------------------------------------------
+    parameter SEGMENT_SIZE_BYTES = 64 * 1024; 
+    
+    localparam IMEM_BASE         = 32'h0000_0000;
+    localparam DMEM_BASE         = 32'h0010_0000;
+    localparam SMEM_BASE         = 32'h003F_0000; 
+
+    // Magic Values for Hardware "Pass" indication
+    localparam MAGIC_ADDR    = 32'h0000_0100;
+    localparam MAGIC_VAL     = 32'hCAFE_F00D;
+    localparam UART_PASS     = 32'hF;
+    localparam VGA_PASS      = 32'h3F;
 
     // -------------------------------------------------------------------------
     // 1. Clock Generation (IP: clk_wiz_0)
@@ -76,7 +92,7 @@ module dut_top (
     // 3. DUT Instantiation
     // -------------------------------------------------------------------------
     Top dut (
-        .clock                         (clk_cpu),   // CPU runs at 100MHz
+        .clock                         (clk_cpu),
         .reset                         (sys_reset),
         
         // Instruction Interface
@@ -103,7 +119,7 @@ module dut_top (
         .io_uart_rxd                   (uart_txd_in),
         
         // VGA Signals
-        .io_vga_pixclk                 (clk_vga),  // 31.5 MHz Pixel Clock
+        .io_vga_pixclk                 (clk_vga),  
         .io_vga_vsync                  (io_vga_vsync_int),
         .io_vga_hsync                  (io_vga_hsync_int),
         .io_vga_activevideo            (io_vga_activevideo),
@@ -117,118 +133,179 @@ module dut_top (
     );
 
     // -------------------------------------------------------------------------
-    // 4. Synthesizable Memory (True Dual Port RAM - 64KB)
+    // 4. Memory Subsystem (Multi-Segment Architecture)
     // -------------------------------------------------------------------------
     
-    wire [3:0] ram_wea;
-    wire [13:0] ram_addra; // Data Address
-    wire [13:0] ram_addrb; // Instruction Address
-    wire [31:0] ram_douta; // Data Out
-    wire [31:0] ram_doutb; // Instruction Out
-    
-    // Address Mapping (Alias to 64KB: Mask upper bits)
-    assign ram_addra = io_mem_slave_address[15:2];
-    assign ram_addrb = io_instruction_req[15:2];
+    // Address Decoding Helper (Same as tb_top)
+    function automatic logic [1:0] decode_address(logic [31:0] addr);
+        if (addr >= IMEM_BASE && addr < (IMEM_BASE + SEGMENT_SIZE_BYTES))
+            return 2'b00; 
+        else if (addr >= DMEM_BASE && addr < (DMEM_BASE + SEGMENT_SIZE_BYTES))
+            return 2'b01; 
+        else if (addr >= SMEM_BASE && addr < (SMEM_BASE + SEGMENT_SIZE_BYTES))
+            return 2'b10; 
+        else
+            return 2'b11;
+    endfunction
 
-    // Byte Enable Generation for Write
-    assign ram_wea = {
+    // ------------------------------
+    // 4.1 Instruction Fetch Logic
+    // ------------------------------
+    wire [31:0] imem_doutb, dmem_doutb, smem_doutb;
+    wire [1:0]  fetch_sel;
+    reg  [1:0]  fetch_sel_r; 
+    
+    assign fetch_sel = decode_address(io_instruction_req);
+
+    always @(posedge clk_cpu) begin
+        fetch_sel_r <= fetch_sel;
+        // In simulation this was io_instruction_address <= io_instruction_req
+        // But in dut_top io_instruction_address is an output from DUT?
+        // Wait, check Top.v definition. Usually address is output FROM CPU.
+        // In tb_top: .io_instruction_address(io_instruction_address) -> wire driven by CPU?
+        // Actually, looking at Top.v instantiation in tb_top:
+        // .io_instruction_address(io_instruction_address) -> It is an OUTPUT from Top.
+        // So we don't assign it here.
+    end
+
+    // MUX Output for Instruction
+    always_comb begin
+        case (fetch_sel_r)
+            2'b00: io_instruction = imem_doutb;
+            2'b01: io_instruction = dmem_doutb;
+            2'b10: io_instruction = smem_doutb;
+            default: io_instruction = 32'h0;
+        endcase
+    end
+
+    // ------------------------------
+    // 4.2 Data Access Logic
+    // ------------------------------
+    wire [31:0] imem_douta, dmem_douta, smem_douta;
+    wire [3:0]  imem_we, dmem_we, smem_we;
+    wire [1:0]  data_sel;
+    reg  [1:0]  data_sel_r;
+    
+    assign data_sel = decode_address(io_mem_slave_address);
+
+    // Write Enable Decoding
+    wire [3:0] global_we = {
         io_mem_slave_write && io_mem_slave_write_strobe_3,
         io_mem_slave_write && io_mem_slave_write_strobe_2,
         io_mem_slave_write && io_mem_slave_write_strobe_1,
         io_mem_slave_write && io_mem_slave_write_strobe_0
     };
 
-    TrueDualPortRAM32_DUT #(
-        .DEPTH(16384),     // 16K * 4 bytes = 64KB
-        .ADDR_WIDTH(14),
-        .LOAD_OFFSET(1024) // 0x1000 bytes
-    ) unified_memory (
-        // Port A: CPU Data (RW) - CPU Domain
-        .clka  (clk_cpu),
-        .wea   (ram_wea),
-        .addra (ram_addra),
-        .dina  (io_mem_slave_write_data),
-        .douta (ram_douta),
+    assign imem_we = (data_sel == 2'b00) ? global_we : 4'b0;
+    assign dmem_we = (data_sel == 2'b01) ? global_we : 4'b0;
+    assign smem_we = (data_sel == 2'b10) ? global_we : 4'b0;
 
-        // Port B: CPU Instruction (R) - CPU Domain
+    // Read Data Control
+    always @(posedge clk_cpu) begin
+        data_sel_r <= data_sel;
+        io_mem_slave_read_valid <= io_mem_slave_read;
+    end
+
+    always @(posedge clk_cpu) begin
+        if (sys_reset) begin
+            led[7:4] <= 4'b0;
+        end 
+        else begin
+            // Hardware Magic Check: If test passes, turn on all LEDs
+            if (io_mem_slave_write && 
+                io_mem_slave_address == MAGIC_ADDR && 
+                io_mem_slave_write_data == MAGIC_VAL) begin
+                // We can't peek into RAM easily in HW logic for the result 
+                // without adding read port logic, so we just assume if it writes
+                // Magic Val to Magic Addr, it reached the end.
+                // You could enhance this to latch the result.
+                led[7:4] <= 4'b1111; 
+            end
+        end
+    end
+
+    // Default LED behavior (if not passed yet): Show PC lower bits
+    always @(posedge clk_cpu) begin
+        if (!(io_mem_slave_write && io_mem_slave_address == MAGIC_ADDR)) begin
+             led[3:0] <= io_instruction_req[5:2];
+        end
+    end
+
+    // Data Read MUX
+    always_comb begin
+        case (data_sel_r)
+            2'b00: io_mem_slave_read_data = imem_douta;
+            2'b01: io_mem_slave_read_data = dmem_douta;
+            2'b10: io_mem_slave_read_data = smem_douta;
+            default: io_mem_slave_read_data = 32'h0;
+        endcase
+    end
+
+    // ------------------------------
+    // 4.3 RAM Instantiations
+    // ------------------------------
+    // Note: Addresses are shifted by 2 (word alignment) and masked/subtracted by base.
+    // Address Width 14 => 16K words => 64KB.
+
+    // IMEM: Load program.mem
+    TrueDualPortRAM32_DUT #(
+        .DEPTH(16384), 
+        .ADDR_WIDTH(14), 
+        .LOAD_OFFSET(1024),
+        .INIT_FILE("program.mem")
+    ) u_imem (
+        .clka  (clk_cpu),
+        .wea   (imem_we),
+        .addra ((io_mem_slave_address - IMEM_BASE) >> 2),
+        .dina  (io_mem_slave_write_data),
+        .douta (imem_douta),
         .clkb  (clk_cpu),
-        .addrb (ram_addrb),
-        .doutb (ram_doutb)
+        .addrb ((io_instruction_req - IMEM_BASE) >> 2),
+        .doutb (imem_doutb)
     );
 
-    // Capture Read Data from RAM
-    always @(posedge clk_cpu) begin
-        // Data Read
-        io_mem_slave_read_valid <= io_mem_slave_read;
-        io_mem_slave_read_data  <= ram_douta;
+    // DMEM: Empty Init
+    TrueDualPortRAM32_DUT #(
+        .DEPTH(16384), 
+        .ADDR_WIDTH(14), 
+        .LOAD_OFFSET(1024),
+        .INIT_FILE("")
+    ) u_dmem (
+        .clka  (clk_cpu),
+        .wea   (dmem_we),
+        .addra ((io_mem_slave_address - DMEM_BASE) >> 2),
+        .dina  (io_mem_slave_write_data),
+        .douta (dmem_douta),
+        .clkb  (clk_cpu),
+        .addrb ((io_instruction_req - DMEM_BASE) >> 2),
+        .doutb (dmem_doutb)
+    );
 
-        // Instruction Fetch
-        io_instruction <= ram_doutb;
-    end
+    // SMEM: Empty Init
+    TrueDualPortRAM32_DUT #(
+        .DEPTH(16384), 
+        .ADDR_WIDTH(14), 
+        .LOAD_OFFSET(1024),
+        .INIT_FILE("")
+    ) u_smem (
+        .clka  (clk_cpu),
+        .wea   (smem_we),
+        .addra ((io_mem_slave_address - SMEM_BASE) >> 2),
+        .dina  (io_mem_slave_write_data),
+        .douta (smem_douta),
+        .clkb  (clk_cpu),
+        .addrb ((io_instruction_req - SMEM_BASE) >> 2),
+        .doutb (smem_doutb)
+    );
 
     // -------------------------------------------------------------------------
-    // 5. IO Mapping
+    // 5. IO Output Mapping
     // -------------------------------------------------------------------------
-    assign vga_r = io_vga_activevideo ? {io_vga_rrggbb[7:5], 1'b0} : 4'b0;
-    assign vga_g = io_vga_activevideo ? {io_vga_rrggbb[4:2], 1'b0} : 4'b0;
-    assign vga_b = io_vga_activevideo ? {io_vga_rrggbb[1:0], 2'b0} : 4'b0;
+    assign VGA_R = io_vga_activevideo ? {io_vga_rrggbb[7:5], 1'b0} : 4'b0;
+    assign VGA_G = io_vga_activevideo ? {io_vga_rrggbb[4:2], 1'b0} : 4'b0;
+    assign VGA_B = io_vga_activevideo ? {io_vga_rrggbb[1:0], 2'b0} : 4'b0;
     
-    assign vga_hs = io_vga_hsync_int;
-    assign vga_vs = io_vga_vsync_int;
-
-    // LEDs show lower bits of PC
-    assign led = io_instruction_req[5:2];
-
-endmodule
-
-// -----------------------------------------------------------------------------
-// True dual-port, dual-clock RAM behavioral model
-// Modified to support Byte Enables (for RISC-V SB/SH/SW support) and Data Read
-// -----------------------------------------------------------------------------
-module TrueDualPortRAM32_DUT #(
-    parameter DEPTH = 16384,      // Number of 32-bit words
-    parameter ADDR_WIDTH = 14,    // Address width in bits
-    parameter LOAD_OFFSET = 1024  // Offset for $readmemh
-) (
-    // Port A: Data Port (RW)
-    input wire clka,
-    input wire [3:0] wea,         // Modified: 4-bit Byte Enable
-    input wire [ADDR_WIDTH-1:0] addra,
-    input wire [31:0] dina,
-    output reg [31:0] douta,      // Added: Data Read Output
-
-    // Port B: Instruction Port (Read Only)
-    input wire clkb,
-    input wire [ADDR_WIDTH-1:0] addrb,
-    output reg [31:0] doutb
-);
-
-    // RAM storage
-    (* ram_style = "block" *) reg [31:0] mem [0:DEPTH-1];
-
-    // Port A: Read/Write
-    always @(posedge clka) begin
-        if (wea[0]) mem[addra][7:0]   <= dina[7:0];
-        if (wea[1]) mem[addra][15:8]  <= dina[15:8];
-        if (wea[2]) mem[addra][23:16] <= dina[23:16];
-        if (wea[3]) mem[addra][31:24] <= dina[31:24];
-        douta <= mem[addra];
-    end
-
-    // Port B: Read Only
-    always @(posedge clkb) begin
-        doutb <= mem[addrb];
-    end
-
-    // Initialize memory
-    integer i;
-    initial begin
-        // 1. Clear memory
-        for (i = 0; i < DEPTH; i = i + 1) begin
-            mem[i] = 32'h0;
-        end
-        // 2. Load Program (Crucial for CPU operation)
-        $readmemh("program.mem", mem, LOAD_OFFSET);
-    end
+    assign VGA_HS_O = io_vga_hsync_int;
+    assign VGA_VS_O = io_vga_vsync_int;
 
 endmodule
