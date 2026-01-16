@@ -83,8 +83,7 @@ module tb_top;
     logic locked;
     logic mmcm_reset;
     logic sys_reset;
-    logic ck_rst;       //ARTY REST Push is Low
-
+    logic ck_rst;       // ARTY RESET Push is Low
     logic CLK100MHZ;
 
     logic        io_instruction_valid;
@@ -159,7 +158,7 @@ module tb_top;
     // -------------------------------------------------------------------------
     initial begin
         CLK100MHZ = 0;
-        forever #1 CLK100MHZ = ~CLK100MHZ;
+        forever #5 CLK100MHZ = ~CLK100MHZ; // 100MHz = 10ns period
     end
     
     // Arty Reset Button is Active Low (0 = Reset).
@@ -195,39 +194,15 @@ module tb_top;
         $display("       Initial SP   : 0x%08x", EXPECTED_SP);
         $display("=============================================================\n");
 
-        repeat(10) @(posedge CLK100MHZ);
+        repeat(50) @(posedge CLK100MHZ); // Wait for MMCM lock
         ck_rst = 1;
     end
 
     // -------------------------------------------------------------------------
-    // Memory Storage (Sparse Model)
+    // Memory Subsystem (Instantiating TrueDualPortRAM32_DUT for each segment)
     // -------------------------------------------------------------------------
-    // IMEM: Stores code AND small data/sbss
-    logic [31:0] imem [0:SEGMENT_WORDS-1]; 
-    // DMEM: Stores large BSS
-    logic [31:0] dmem [0:SEGMENT_WORDS-1];
-    // SMEM: Stores Stack
-    logic [31:0] smem [0:SEGMENT_WORDS-1]; 
     
-    initial begin
-        // Clear Memories
-        for (int i=0; i < SEGMENT_WORDS; i++) begin
-            imem[i] = 32'h0;
-            dmem[i] = 32'h0;
-            smem[i] = 32'h0;
-        end
-
-        // Load hex file
-        // Note: program.hex will contain .text, .data, .sdata initialized values
-        // They will automatically load into 'imem' because addresses are < 64KB.
-        $readmemh("program.mem", imem, 32'h400); 
-        $display("[INFO] program.mem loaded into IMEM (covers .text/.sdata)");
-    end
-
-    // -------------------------------------------------------------------------
-    // Address Decoding Logic (Range Based)
-    // -------------------------------------------------------------------------
-    // Returns: 2'b00 (IMEM), 2'b01 (DMEM), 2'b10 (SMEM), 2'b11 (Invalid)
+    // Address Decoding Helper
     function automatic logic [1:0] decode_address(logic [31:0] addr);
         if (addr >= IMEM_BASE && addr < (IMEM_BASE + SEGMENT_SIZE_BYTES))
             return 2'b00; // .text, .sdata, .sbss
@@ -239,113 +214,140 @@ module tb_top;
             return 2'b11;
     endfunction
 
-    // -------------------------------------------------------------------------
-    // INSTRUCTION FETCH
-    // -------------------------------------------------------------------------
-    always_ff @(posedge clk_cpu) begin
-        logic [1:0] sel;
-        logic [31:0] word_idx;
-        
-        sel = decode_address(io_instruction_req);
-        
-        // Calculate offset
-        if (sel == 2'b00) word_idx = (io_instruction_req - IMEM_BASE) >> 2;
-        else if (sel == 2'b01) word_idx = (io_instruction_req - DMEM_BASE) >> 2;
-        else word_idx = 0;
-
-        if (io_instruction_req[1:0] != 2'b00) begin
-            $display("[Error] PC Misaligned! Address: %h", io_instruction_req);
-        end
-
-        // Fetch Logic
-        if (sel == 2'b00 && word_idx < SEGMENT_WORDS) begin
-            io_instruction = imem[word_idx];
-            io_instruction_address = io_instruction_req;
-        end else if (sel == 2'b01 && word_idx < SEGMENT_WORDS) begin
-            io_instruction = dmem[word_idx];
-            io_instruction_address = io_instruction_req;
-        end else begin
-            io_instruction = 32'h0; 
-        end
-    end
-
-    // -------------------------------------------------------------------------
-    // DATA ACCESS (Read/Write)
-    // -------------------------------------------------------------------------
-    logic [1:0] mem_select;
-    logic [31:0] rw_word_idx;
+    // ------------------------------
+    // 1. Instruction Fetch (Port B)
+    // ------------------------------
+    wire [31:0] imem_doutb, dmem_doutb, smem_doutb;
+    wire [1:0]  fetch_sel;
+    reg  [1:0]  fetch_sel_r; // Registered selector for synchronous RAM
     
-    // Address Decode Phase
-    always_comb begin
-        mem_select = decode_address(io_mem_slave_address);
-        
-        if (mem_select == 2'b00) rw_word_idx = (io_mem_slave_address - IMEM_BASE) >> 2;
-        else if (mem_select == 2'b01) rw_word_idx = (io_mem_slave_address - DMEM_BASE) >> 2;
-        else if (mem_select == 2'b10) rw_word_idx = (io_mem_slave_address - SMEM_BASE) >> 2;
-        else rw_word_idx = 0;
-    end
+    assign fetch_sel = decode_address(io_instruction_req);
 
+    // Register the selector to match RAM latency (1 cycle)
     always_ff @(posedge clk_cpu) begin
-        io_mem_slave_read_valid <= 0;
+        fetch_sel_r <= fetch_sel;
+        io_instruction_address <= io_instruction_req;
+        
+        // Misalignment Check
+        if (io_instruction_req[1:0] != 2'b00) 
+            $display("[Error] PC Misaligned! Address: %h", io_instruction_req);
+    end
 
-        // --- READ ---
-        if (io_mem_slave_read) begin
-            if (mem_select == 2'b11) begin
-                 $display("[Error] Read Unmapped Address! Addr: %h", io_mem_slave_address);
-                 io_mem_slave_read_data <= 32'hDEADBEEF;
+    // MUX Output
+    always_comb begin
+        case (fetch_sel_r)
+            2'b00: io_instruction = imem_doutb;
+            2'b01: io_instruction = dmem_doutb;
+            2'b10: io_instruction = smem_doutb;
+            default: io_instruction = 32'h0;
+        endcase
+    end
+
+    // ------------------------------
+    // 2. Data Access (Port A)
+    // ------------------------------
+    wire [31:0] imem_douta, dmem_douta, smem_douta;
+    wire [3:0]  imem_we, dmem_we, smem_we;
+    wire [1:0]  data_sel;
+    reg  [1:0]  data_sel_r;
+    
+    assign data_sel = decode_address(io_mem_slave_address);
+
+    // Write Enable Decoding (Combinational)
+    wire [3:0] global_we = {
+        io_mem_slave_write && io_mem_slave_write_strobe_3,
+        io_mem_slave_write && io_mem_slave_write_strobe_2,
+        io_mem_slave_write && io_mem_slave_write_strobe_1,
+        io_mem_slave_write && io_mem_slave_write_strobe_0
+    };
+
+    assign imem_we = (data_sel == 2'b00) ? global_we : 4'b0;
+    assign dmem_we = (data_sel == 2'b01) ? global_we : 4'b0;
+    assign smem_we = (data_sel == 2'b10) ? global_we : 4'b0;
+
+    // Read Data Muxing
+    always_ff @(posedge clk_cpu) begin
+        data_sel_r <= data_sel;
+        io_mem_slave_read_valid <= io_mem_slave_read;
+        
+        // Warnings
+        if (io_mem_slave_read && data_sel == 2'b11) 
+             $display("[Error] Read Unmapped Address! Addr: %h", io_mem_slave_address);
+        if (io_mem_slave_write && data_sel == 2'b11)
+             $display("[Warning] Write to unmapped address: %h", io_mem_slave_address);
+             
+        // Magic Termination
+        if (io_mem_slave_write && 
+            io_mem_slave_address == MAGIC_ADDR && 
+            io_mem_slave_write_data == MAGIC_VAL) begin
+            
+            // Read result directly from IMEM instance
+            logic [31:0] result;
+            result = u_imem.mem[RESULT_ADDR >> 2];
+            
+            if (result == UART_PASS || result == VGA_PASS) begin
+                $display("\nTEST PASSED (result=0x%0x)", result);
             end else begin
-                case (mem_select)
-                    2'b00: io_mem_slave_read_data <= imem[rw_word_idx]; // Read .text/.sdata/.sbss
-                    2'b01: io_mem_slave_read_data <= dmem[rw_word_idx]; // Read .bss
-                    2'b10: io_mem_slave_read_data <= smem[rw_word_idx]; // Read Stack
-                    default: io_mem_slave_read_data <= 32'h0;
-                endcase
+                $display("\nTEST FAILED (result=0x%0x)", result);
             end
-            io_mem_slave_read_valid <= 1;
-        end
-
-        // --- WRITE ---
-        if (io_mem_slave_write) begin
-            if (mem_select != 2'b11) begin
-                case (mem_select)
-                    2'b00: begin // IMEM (Write to .sdata/.sbss)
-                        if (io_mem_slave_write_strobe_0) imem[rw_word_idx][7:0]   <= io_mem_slave_write_data[7:0];
-                        if (io_mem_slave_write_strobe_1) imem[rw_word_idx][15:8]  <= io_mem_slave_write_data[15:8];
-                        if (io_mem_slave_write_strobe_2) imem[rw_word_idx][23:16] <= io_mem_slave_write_data[23:16];
-                        if (io_mem_slave_write_strobe_3) imem[rw_word_idx][31:24] <= io_mem_slave_write_data[31:24];
-                    end
-                    2'b01: begin // DMEM (Write to .bss)
-                        if (io_mem_slave_write_strobe_0) dmem[rw_word_idx][7:0]   <= io_mem_slave_write_data[7:0];
-                        if (io_mem_slave_write_strobe_1) dmem[rw_word_idx][15:8]  <= io_mem_slave_write_data[15:8];
-                        if (io_mem_slave_write_strobe_2) dmem[rw_word_idx][23:16] <= io_mem_slave_write_data[23:16];
-                        if (io_mem_slave_write_strobe_3) dmem[rw_word_idx][31:24] <= io_mem_slave_write_data[31:24];
-                    end
-                    2'b10: begin // SMEM (Stack)
-                        if (io_mem_slave_write_strobe_0) smem[rw_word_idx][7:0]   <= io_mem_slave_write_data[7:0];
-                        if (io_mem_slave_write_strobe_1) smem[rw_word_idx][15:8]  <= io_mem_slave_write_data[15:8];
-                        if (io_mem_slave_write_strobe_2) smem[rw_word_idx][23:16] <= io_mem_slave_write_data[23:16];
-                        if (io_mem_slave_write_strobe_3) smem[rw_word_idx][31:24] <= io_mem_slave_write_data[31:24];
-                    end
-                endcase
-            end else begin
-                // e.g. Writes to the gap between 64KB and 1MB
-                $display("[Warning] Write to unmapped address: %h", io_mem_slave_address);
-            end
-
-            // Magic Termination
-            if (io_mem_slave_address == MAGIC_ADDR && io_mem_slave_write_data == MAGIC_VAL) begin
-                logic [31:0] result;
-                result = imem[RESULT_ADDR >> 2]; 
-                
-                if (result == UART_PASS || result == VGA_PASS) begin
-                    $display("\nTEST PASSED (result=0x%0x)", result);
-                end else begin
-                    $display("\nTEST FAILED (result=0x%0x)", result);
-                end
-                $finish;
-            end
+            $finish;
         end
     end
+
+    always_comb begin
+        case (data_sel_r)
+            2'b00: io_mem_slave_read_data = imem_douta;
+            2'b01: io_mem_slave_read_data = dmem_douta;
+            2'b10: io_mem_slave_read_data = smem_douta;
+            default: io_mem_slave_read_data = 32'h0;
+        endcase
+    end
+
+    // -------------------------------------------------------------------------
+    // 3. Module Instantiations
+    // -------------------------------------------------------------------------
+    
+    // IMEM Instance
+    TrueDualPortRAM32_DUT #(
+        .DEPTH(16384), .ADDR_WIDTH(14), .LOAD_OFFSET(1024), .INIT_FILE("program.mem")
+    ) u_imem (
+        .clka  (clk_cpu),
+        .wea   (imem_we),
+        .addra ((io_mem_slave_address - IMEM_BASE) >> 2),
+        .dina  (io_mem_slave_write_data),
+        .douta (imem_douta),
+        .clkb  (clk_cpu),
+        .addrb ((io_instruction_req - IMEM_BASE) >> 2),
+        .doutb (imem_doutb)
+    );
+
+    // DMEM Instance
+    TrueDualPortRAM32_DUT #(
+        .DEPTH(16384), .ADDR_WIDTH(14), .LOAD_OFFSET(1024), .INIT_FILE("")
+    ) u_dmem (
+        .clka  (clk_cpu),
+        .wea   (dmem_we),
+        .addra ((io_mem_slave_address - DMEM_BASE) >> 2),
+        .dina  (io_mem_slave_write_data),
+        .douta (dmem_douta),
+        .clkb  (clk_cpu),
+        .addrb ((io_instruction_req - DMEM_BASE) >> 2),
+        .doutb (dmem_doutb)
+    );
+
+    // SMEM Instance
+    TrueDualPortRAM32_DUT #(
+        .DEPTH(16384), .ADDR_WIDTH(14), .LOAD_OFFSET(1024), .INIT_FILE("")
+    ) u_smem (
+        .clka  (clk_cpu),
+        .wea   (smem_we),
+        .addra ((io_mem_slave_address - SMEM_BASE) >> 2),
+        .dina  (io_mem_slave_write_data),
+        .douta (smem_douta),
+        .clkb  (clk_cpu),
+        .addrb ((io_instruction_req - SMEM_BASE) >> 2),
+        .doutb (smem_doutb)
+    );
 
     // -------------------------------------------------------------------------
     // UART, VGA, Watchdog (No changes)
