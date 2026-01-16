@@ -83,7 +83,7 @@ module dut_top (
     wire        io_signal_interrupt = 1'b0;
 
     // VGA Internal
-    wire [7:0]  io_vga_rrggbb;
+    wire [5:0]  io_vga_rrggbb;
     wire        io_vga_hsync_int;
     wire        io_vga_vsync_int;
     wire        io_vga_activevideo;
@@ -301,9 +301,9 @@ module dut_top (
     // -------------------------------------------------------------------------
     // 5. IO Output Mapping
     // -------------------------------------------------------------------------
-    assign VGA_R = io_vga_activevideo ? {io_vga_rrggbb[7:5], 1'b0} : 4'b0;
-    assign VGA_G = io_vga_activevideo ? {io_vga_rrggbb[4:2], 1'b0} : 4'b0;
-    assign VGA_B = io_vga_activevideo ? {io_vga_rrggbb[1:0], 2'b0} : 4'b0;
+    assign VGA_R[3:0] = {2{io_vga_rrggbb[5:4]}};
+    assign VGA_G[3:0] = {2{io_vga_rrggbb[3:2]}};
+    assign VGA_B[3:0] = {2{io_vga_rrggbb[1:0]}};
     
     assign VGA_HS_O = io_vga_hsync_int;
     assign VGA_VS_O = io_vga_vsync_int;

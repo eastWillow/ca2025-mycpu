@@ -7,6 +7,9 @@
 
 #include "mmio.h"
 
+/* Magic value to signal test completion to simulator */
+#define TEST_DONE_MAGIC 0xCAFEF00Du
+
 // Enable prepacked frames to guarantee correct pixels in SDL demo
 #define USE_PREPACKED_FRAMES 1
 
@@ -277,10 +280,16 @@ int main(void)
     for (int frame = 0; frame < FRAME_COUNT; frame++)
         vga_upload_frame_delta(frame);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+    *TEST_RESULT = 0xF;
+    *TEST_DONE_FLAG = TEST_DONE_MAGIC;
+#pragma GCC diagnostic pop
+
     // Animate: cycle through frames infinitely
     for (uint32_t frame = 0;;) {
         vga_write32(VGA_ADDR_CTRL, (frame << 4) | 0x01);
-        delay(50000);
+        delay(500000);  // 50000000 is 4 secs, so 500000 is 0.05 secs
         frame = (frame + 1 < FRAME_COUNT) ? frame + 1 : 0;
     }
 #else

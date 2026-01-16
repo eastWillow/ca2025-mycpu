@@ -7,6 +7,10 @@ Step 1. CROSS_COMPILE=riscv-none-elf- make check-uart
 Step 2. cd csrc
 Step 3. hexdump -v -e '1/4 "%08x" "\n"' uart.asmbin > program.mem
 
+Step 0. cd 4-soc
+Step 1. CROSS_COMPILE=riscv-none-elf- make check-vga
+Step 2. cd csrc
+Step 3. hexdump -v -e '1/4 "%08x" "\n"' nyancat.asmbin > program.mem
 
 launch_simulation  -scripts_only
 
