@@ -11,12 +11,18 @@ module dut_top (
     output wire uart_rxd_out,  // FPGA TX
 
     // VGA Pmod (Headers JB/JC)
-    output wire [3:0] VGA_R,
-    output wire [3:0] VGA_G,
-    output wire [3:0] VGA_B,
-    output wire       VGA_HS_O,
-    output wire       VGA_VS_O,
+//    output wire [3:0] VGA_R,
+//    output wire [3:0] VGA_G,
+//    output wire [3:0] VGA_B,
+//    output wire       VGA_HS_O,
+//    output wire       VGA_VS_O,
     
+    // HDMI Pmod (Headers JC)
+    output wire tmds_clk_p,
+    output wire tmds_clk_n,
+    output wire [2:0] tmds_data_p,
+    output wire [2:0] tmds_data_n,
+
     // Debug LEDs
     output reg [7:0] led
 );
@@ -41,6 +47,7 @@ module dut_top (
     // -------------------------------------------------------------------------
     wire clk_cpu;    // 100 MHz
     wire clk_vga;    // 31.5 MHz
+    wire clk_serial; // 31.5 * 5 = 157.5 MHz for HDMI Serial
     wire locked;
     wire mmcm_reset;
     wire sys_reset;
@@ -55,6 +62,7 @@ module dut_top (
     clk_wiz_0 u_clk_wiz (
         .clk_cpu (clk_cpu),
         .clk_vga (clk_vga),
+        .clk_serial (clk_serial),
         .reset   (mmcm_reset),
         .locked  (locked),
         .clk_in1 (CLK100MHZ)
@@ -301,11 +309,37 @@ module dut_top (
     // -------------------------------------------------------------------------
     // 5. IO Output Mapping
     // -------------------------------------------------------------------------
-    assign VGA_R[3:0] = {2{io_vga_rrggbb[5:4]}};
-    assign VGA_G[3:0] = {2{io_vga_rrggbb[3:2]}};
-    assign VGA_B[3:0] = {2{io_vga_rrggbb[1:0]}};
+//    assign VGA_R[3:0] = {2{io_vga_rrggbb[5:4]}};
+//    assign VGA_G[3:0] = {2{io_vga_rrggbb[3:2]}};
+//    assign VGA_B[3:0] = {2{io_vga_rrggbb[1:0]}};
     
-    assign VGA_HS_O = io_vga_hsync_int;
-    assign VGA_VS_O = io_vga_vsync_int;
-
+//    assign VGA_HS_O = io_vga_hsync_int;
+//    assign VGA_VS_O = io_vga_vsync_int;
+    
+    logic [23:0] rgb2dvi_in;
+    
+    // Channel 2 (Red)   : vid_pData[23:16] <- io_vga_rrggbb[5:4]
+    // Channel 0 (Blue)  : vid_pData[15:8]  <- io_vga_rrggbb[1:0]
+    // Channel 1 (Green) : vid_pData[7:0]   <- io_vga_rrggbb[3:2]
+    
+    assign rgb2dvi_in[23:16] = {4{io_vga_rrggbb[5:4]}}; // Red
+    assign rgb2dvi_in[15:8]  = {4{io_vga_rrggbb[1:0]}}; // Blue
+    assign rgb2dvi_in[7:0]   = {4{io_vga_rrggbb[3:2]}}; // Green
+    
+    rgb2dvi u_rgb2dvi (
+        .PixelClk(clk_vga),
+        .SerialClk(clk_serial),
+        .aRst( sys_reset ), 
+    
+        .vid_pData(rgb2dvi_in),
+        .vid_pVDE(io_vga_activevideo),
+        .vid_pHSync(io_vga_hsync_int),
+        .vid_pVSync(io_vga_vsync_int),
+    
+        .TMDS_Clk_p(tmds_clk_p),
+        .TMDS_Clk_n(tmds_clk_n),
+        .TMDS_Data_p(tmds_data_p),
+        .TMDS_Data_n(tmds_data_n)
+    );
+    
 endmodule

@@ -34,8 +34,8 @@ set_property -dict { PACKAGE_PIN K2    IOSTANDARD LVCMOS33 } [get_ports { led[3]
 
 set_property -dict { PACKAGE_PIN H5    IOSTANDARD LVCMOS33 } [get_ports { led[4] }]; #IO_L24N_T3_35 Sch=led[4]
 set_property -dict { PACKAGE_PIN J5    IOSTANDARD LVCMOS33 } [get_ports { led[5] }]; #IO_25_35 Sch=led[5]
-set_property -dict { PACKAGE_PIN T9    IOSTANDARD LVCMOS33 } [get_ports { led[6] }]; #IO_L24P_T3_A01_D17_14 Sch=led[6]
-set_property -dict { PACKAGE_PIN T10   IOSTANDARD LVCMOS33 } [get_ports { led[7] }]; #IO_L24N_T3_A00_D16_14 Sch=led[7]
+set_property -dict { PACKAGE_PIN T9    IOSTANDARD LVCMOS25 } [get_ports { led[6] }]; #IO_L24P_T3_A01_D17_14 Sch=led[6]
+set_property -dict { PACKAGE_PIN T10   IOSTANDARD LVCMOS25 } [get_ports { led[7] }]; #IO_L24N_T3_A00_D16_14 Sch=led[7]
 
 ##Buttons
 
@@ -57,25 +57,37 @@ set_property -dict { PACKAGE_PIN T10   IOSTANDARD LVCMOS33 } [get_ports { led[7]
 
 ##Pmod Header JB
 
-set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[0] }]; #IO_L11P_T1_SRCC_15 Sch=jb_p[1]
-set_property -dict { PACKAGE_PIN E16   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[1] }]; #IO_L11N_T1_SRCC_15 Sch=jb_n[1]
-set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[2] }]; #IO_L12P_T1_MRCC_15 Sch=jb_p[2]
-set_property -dict { PACKAGE_PIN C15   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[3] }]; #IO_L12N_T1_MRCC_15 Sch=jb_n[2]
-set_property -dict { PACKAGE_PIN J17   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[0] }]; #IO_L23P_T3_FOE_B_15 Sch=jb_p[3]
-set_property -dict { PACKAGE_PIN J18   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[1] }]; #IO_L23N_T3_FWE_B_15 Sch=jb_n[3]
-set_property -dict { PACKAGE_PIN K15   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[2] }]; #IO_L24P_T3_RS1_15 Sch=jb_p[4]
-set_property -dict { PACKAGE_PIN J15   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[3] }]; #IO_L24N_T3_RS0_15 Sch=jb_n[4]
+#set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[0] }]; #IO_L11P_T1_SRCC_15 Sch=jb_p[1]
+#set_property -dict { PACKAGE_PIN E16   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[1] }]; #IO_L11N_T1_SRCC_15 Sch=jb_n[1]
+#set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[2] }]; #IO_L12P_T1_MRCC_15 Sch=jb_p[2]
+#set_property -dict { PACKAGE_PIN C15   IOSTANDARD LVCMOS33 } [get_ports { VGA_B[3] }]; #IO_L12N_T1_MRCC_15 Sch=jb_n[2]
+#set_property -dict { PACKAGE_PIN J17   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[0] }]; #IO_L23P_T3_FOE_B_15 Sch=jb_p[3]
+#set_property -dict { PACKAGE_PIN J18   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[1] }]; #IO_L23N_T3_FWE_B_15 Sch=jb_n[3]
+#set_property -dict { PACKAGE_PIN K15   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[2] }]; #IO_L24P_T3_RS1_15 Sch=jb_p[4]
+#set_property -dict { PACKAGE_PIN J15   IOSTANDARD LVCMOS33 } [get_ports { VGA_R[3] }]; #IO_L24N_T3_RS0_15 Sch=jb_n[4]
 
 ##Pmod Header JC
 
-set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33 } [get_ports { VGA_HS_O }]; #IO_L20P_T3_A08_D24_14 Sch=jc_p[1]
-set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS33 } [get_ports { VGA_VS_O }]; #IO_L20N_T3_A07_D23_14 Sch=jc_n[1]
+#set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33 } [get_ports { VGA_HS_O }]; #IO_L20P_T3_A08_D24_14 Sch=jc_p[1]
+#set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS33 } [get_ports { VGA_VS_O }]; #IO_L20N_T3_A07_D23_14 Sch=jc_n[1]
 #set_property -dict { PACKAGE_PIN V10   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[2] }]; #IO_L21P_T3_DQS_14 Sch=jc_p[2]
 #set_property -dict { PACKAGE_PIN V11   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[3] }]; #IO_L21N_T3_DQS_A06_D22_14 Sch=jc_n[2]
-set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[0] }]; #IO_L22P_T3_A05_D21_14 Sch=jc_p[3]
-set_property -dict { PACKAGE_PIN V14   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[1] }]; #IO_L22N_T3_A04_D20_14 Sch=jc_n[3]
-set_property -dict { PACKAGE_PIN T13   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[2] }]; #IO_L23P_T3_A03_D19_14 Sch=jc_p[4]
-set_property -dict { PACKAGE_PIN U13   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[3] }]; #IO_L23N_T3_A02_D18_14 Sch=jc_n[4]
+#set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[0] }]; #IO_L22P_T3_A05_D21_14 Sch=jc_p[3]
+#set_property -dict { PACKAGE_PIN V14   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[1] }]; #IO_L22N_T3_A04_D20_14 Sch=jc_n[3]
+#set_property -dict { PACKAGE_PIN T13   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[2] }]; #IO_L23P_T3_A03_D19_14 Sch=jc_p[4]
+#set_property -dict { PACKAGE_PIN U13   IOSTANDARD LVCMOS33 } [get_ports { VGA_G[3] }]; #IO_L23N_T3_A02_D18_14 Sch=jc_n[4]
+
+##Pmod Header JC
+
+set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS25 } [get_ports { tmds_data_p[2] }]; #IO_L20P_T3_A08_D24_14 Sch=jc_p[1]
+set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS25 } [get_ports { tmds_data_p[1] }]; #IO_L20N_T3_A07_D23_14 Sch=jc_n[1]
+set_property -dict { PACKAGE_PIN V10   IOSTANDARD LVCMOS25 } [get_ports { tmds_data_p[0] }]; #IO_L21P_T3_DQS_14 Sch=jc_p[2]
+set_property -dict { PACKAGE_PIN V11   IOSTANDARD LVCMOS25 } [get_ports { tmds_clk_p }]; #IO_L21N_T3_DQS_A06_D22_14 Sch=jc_n[2]
+
+set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS25 } [get_ports { tmds_data_n[2] }]; #IO_L22P_T3_A05_D21_14 Sch=jc_p[3]
+set_property -dict { PACKAGE_PIN V14   IOSTANDARD LVCMOS25 } [get_ports { tmds_data_n[1] }]; #IO_L22N_T3_A04_D20_14 Sch=jc_n[3]
+set_property -dict { PACKAGE_PIN T13   IOSTANDARD LVCMOS25 } [get_ports { tmds_data_n[0] }]; #IO_L23P_T3_A03_D19_14 Sch=jc_p[4]
+set_property -dict { PACKAGE_PIN U13   IOSTANDARD LVCMOS25 } [get_ports { tmds_clk_n }]; #IO_L23N_T3_A02_D18_14 Sch=jc_n[4]
 
 ##Pmod Header JD
 

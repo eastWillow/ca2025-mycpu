@@ -1,0 +1,3 @@
+[submodule "FPGA-HDMI"]
+	path = FPGA-HDMI
+	url = https://github.com/WangXuan95/FPGA-HDMI
