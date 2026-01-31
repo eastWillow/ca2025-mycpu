@@ -1,4 +1,10 @@
 # RISC-V CPU Labs in Chisel
+> [!TIP]
+> My Contribution: This fork demonstrates the successful completion of the course labs and the implementation of a functional CPU core on an FPGA.
+> 
+> I have also added HDMI Output support for the Arty A7 board (refer to branch: Add-Vivado-TestBench-4soc).
+> 
+> Thera is an Arty Vivado Projecy in 4-soc/arty
 
 > [!NOTE]
 > Code fragments marked `CA25: Exercise` are intentionally incomplete lab exercises.
