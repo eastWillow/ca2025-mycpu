@@ -32,7 +32,7 @@ class MEM2WB extends Module {
     val alu_result          = Input(UInt(Parameters.DataWidth))
     val regs_write_enable   = Input(Bool())
     val regs_write_source   = Input(UInt(2.W))
-    val regs_write_address  = Input(UInt(Parameters.AddrWidth))
+    val regs_write_address  = Input(UInt(Parameters.PhysicalRegisterAddrWidth))
     val memory_read_data    = Input(UInt(Parameters.DataWidth))
     val csr_read_data       = Input(UInt(Parameters.DataWidth))
 
@@ -40,7 +40,7 @@ class MEM2WB extends Module {
     val output_alu_result          = Output(UInt(Parameters.DataWidth))
     val output_regs_write_enable   = Output(Bool())
     val output_regs_write_source   = Output(UInt(2.W))
-    val output_regs_write_address  = Output(UInt(Parameters.AddrWidth))
+    val output_regs_write_address  = Output(UInt(Parameters.PhysicalRegisterAddrWidth))
     val output_memory_read_data    = Output(UInt(Parameters.DataWidth))
     val output_csr_read_data       = Output(UInt(Parameters.DataWidth))
   })

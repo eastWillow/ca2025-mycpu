@@ -30,7 +30,7 @@ class EX2MEM extends Module {
     val stall               = Input(Bool())
     val regs_write_enable   = Input(Bool())
     val regs_write_source   = Input(UInt(2.W))
-    val regs_write_address  = Input(UInt(Parameters.AddrWidth))
+    val regs_write_address  = Input(UInt(Parameters.PhysicalRegisterAddrWidth))
     val instruction_address = Input(UInt(Parameters.AddrWidth))
     val funct3              = Input(UInt(3.W))
     val reg2_data           = Input(UInt(Parameters.DataWidth))
@@ -41,7 +41,7 @@ class EX2MEM extends Module {
 
     val output_regs_write_enable   = Output(Bool())
     val output_regs_write_source   = Output(UInt(2.W))
-    val output_regs_write_address  = Output(UInt(Parameters.AddrWidth))
+    val output_regs_write_address  = Output(UInt(Parameters.PhysicalRegisterAddrWidth))
     val output_instruction_address = Output(UInt(Parameters.AddrWidth))
     val output_funct3              = Output(UInt(Parameters.DataWidth))
     val output_reg2_data           = Output(UInt(Parameters.DataWidth))
