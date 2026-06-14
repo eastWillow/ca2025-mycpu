@@ -88,6 +88,19 @@ fpga:
                 fi; \
         fi
 
+fpga-vga: 
+	@if java -version >/dev/null 2>&1; then \
+                cd .. && PATH=$$HOME/.local/bin:$$PATH sbt "project soc" "runMain board.fpga.VerilogGenerator"; \
+        else \
+                echo "⚠️  Java runtime not found; using existing generated Verilog in verilog/fpga"; \
+                if [ ! -f verilog/fpga/Top.v ]; then \
+                        echo "❌ Top.v missing; install Java (set JAVA_HOME) to regenerate Verilog"; \
+                        exit 1; \
+                fi; \
+        fi
+	@$(MAKE) -C csrc nyancat.asmbin >/dev/null
+	hexdump -v -e '1/4 "%08x" "\n"' csrc/nyancat.asmbin > csrc/program.mem
+
 indent:
 	find . -name '*.scala' | xargs scalafmt
 	clang-format -i verilog/verilator/*.cpp verilog/verilator/*.h

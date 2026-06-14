@@ -11,6 +11,8 @@ RISC-V RV32I processor with AXI4-Lite bus interface, VGA, and UART peripherals.
   - VGA: 640x480@72Hz with 64x64 framebuffer (6x scaling) and 16-color palette
   - UART: Buffered TX/RX at 115200 baud with status register
   - Memory: 2MB main memory (program loaded at 0x1000)
+- FPGA Support
+  - Arty A7 : Pmod JC HDMI Output
 
 ## Architecture
 
@@ -60,6 +62,12 @@ make sim BINARY=csrc/nyancat.asmbin
 
 # Run RISCOF compliance tests
 make compliance
+
+# Generate FPGA Verilog
+make fpga
+
+# Generate FPGA Verilog & program.mem
+make fpga-vga
 
 # Format code
 make indent
