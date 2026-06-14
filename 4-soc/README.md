@@ -12,7 +12,9 @@ RISC-V RV32I processor with AXI4-Lite bus interface, VGA, and UART peripherals.
   - UART: Buffered TX/RX at 115200 baud with status register
   - Memory: 2MB main memory (program loaded at 0x1000)
 - FPGA Support
-  - Arty A7 : Pmod JC HDMI Output
+  - Arty A7 
+    - Pmod JC HDMI Output
+    - SPI Flash : MTN25QL128-spi_x1_x2_x4
 
 ## Architecture
 
