@@ -313,7 +313,7 @@ module tb_top;
     
     // IMEM Instance
     TrueDualPortRAM32_DUT #(
-        .DEPTH(16384), .ADDR_WIDTH(14), .LOAD_OFFSET(1024), .INIT_FILE("program.mem")
+        .DEPTH(8192), .ADDR_WIDTH(13), .LOAD_OFFSET(1024), .INIT_FILE("program.mem")
     ) u_imem (
         .clka  (clk_cpu),
         .wea   (imem_we),
@@ -327,7 +327,7 @@ module tb_top;
 
     // DMEM Instance
     TrueDualPortRAM32_DUT #(
-        .DEPTH(16384), .ADDR_WIDTH(14), .LOAD_OFFSET(1024), .INIT_FILE("")
+        .DEPTH(8192), .ADDR_WIDTH(13), .LOAD_OFFSET(1024), .INIT_FILE("")
     ) u_dmem (
         .clka  (clk_cpu),
         .wea   (dmem_we),
@@ -341,7 +341,7 @@ module tb_top;
 
     // SMEM Instance
     TrueDualPortRAM32_DUT #(
-        .DEPTH(16384), .ADDR_WIDTH(14), .LOAD_OFFSET(1024), .INIT_FILE("")
+        .DEPTH(8192), .ADDR_WIDTH(13), .LOAD_OFFSET(1024), .INIT_FILE("")
     ) u_smem (
         .clka  (clk_cpu),
         .wea   (smem_we),

@@ -125,7 +125,8 @@ module dut_top (
         .io_signal_interrupt           (io_signal_interrupt),
         .io_uart_txd                   (uart_rxd_out),
         .io_uart_rxd                   (uart_txd_in),
-        
+        .io_uart_interrupt             (),
+
         // VGA Signals
         .io_vga_pixclk                 (clk_vga),  
         .io_vga_vsync                  (io_vga_vsync_int),
@@ -137,7 +138,9 @@ module dut_top (
         
         // Debug
         .io_cpu_debug_read_address     (),
-        .io_cpu_csr_debug_read_address ()
+        .io_cpu_debug_read_data        (),
+        .io_cpu_csr_debug_read_address (),
+        .io_cpu_csr_debug_read_data    ()
     );
 
     // -------------------------------------------------------------------------
@@ -257,8 +260,8 @@ module dut_top (
 
     // IMEM: Load program.mem
     TrueDualPortRAM32_DUT #(
-        .DEPTH(16384), 
-        .ADDR_WIDTH(14), 
+        .DEPTH(8192),
+        .ADDR_WIDTH(13),
         .LOAD_OFFSET(1024),
         .INIT_FILE("program.mem")
     ) u_imem (
@@ -274,8 +277,8 @@ module dut_top (
 
     // DMEM: Empty Init
     TrueDualPortRAM32_DUT #(
-        .DEPTH(16384), 
-        .ADDR_WIDTH(14), 
+        .DEPTH(8192),
+        .ADDR_WIDTH(13),
         .LOAD_OFFSET(1024),
         .INIT_FILE("")
     ) u_dmem (
@@ -291,8 +294,8 @@ module dut_top (
 
     // SMEM: Empty Init
     TrueDualPortRAM32_DUT #(
-        .DEPTH(16384), 
-        .ADDR_WIDTH(14), 
+        .DEPTH(8192),
+        .ADDR_WIDTH(13),
         .LOAD_OFFSET(1024),
         .INIT_FILE("")
     ) u_smem (

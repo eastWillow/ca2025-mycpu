@@ -72,12 +72,12 @@ class VGA extends Module {
   val DIV_BY_SCALE_MULT = 10923
 
   // Framebuffer parameters
-  val NUM_FRAMES       = 12
+  val NUM_FRAMES       = 4
   val PIXELS_PER_FRAME = 4096
   val TOTAL_PIXELS     = NUM_FRAMES * PIXELS_PER_FRAME
   val WORDS_PER_FRAME  = PIXELS_PER_FRAME / 8
   val TOTAL_WORDS      = NUM_FRAMES * WORDS_PER_FRAME
-  val ADDR_WIDTH       = 13
+  val ADDR_WIDTH       = 11
 
   // ============ MMIO Register Offsets ============
   // These match the memory map documented in the class header
