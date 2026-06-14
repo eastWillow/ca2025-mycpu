@@ -20,7 +20,7 @@ module TrueDualPortRAM32 #(
 );
 
     // RAM storage
-    reg [31:0] mem [0:DEPTH-1];
+    (* ram_style = "block" *) reg [31:0] mem [0:DEPTH-1];
 
     // Port A: Write port
     always @(posedge clka) begin
