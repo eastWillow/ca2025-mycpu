@@ -52,6 +52,9 @@ object Parameters {
   val InterruptFlagBits  = 32
   val InterruptFlagWidth = InterruptFlagBits.W
 
+  // Active interrupt bit positions used in the system (e.g., 7 for MTIE, 11 for MEIE)
+  val ActiveInterrupts = Seq(7, 11)
+
   // Pipeline stall control encoding (legacy, kept for compatibility)
   val HoldStateBits   = 3
   val StallStateWidth = HoldStateBits.W

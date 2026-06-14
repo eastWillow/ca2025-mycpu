@@ -13,7 +13,7 @@ class CSRDirectAccessBundle extends Bundle {
   val mepc    = Input(UInt(Parameters.DataWidth))
   val mcause  = Input(UInt(Parameters.DataWidth))
   val mtvec   = Input(UInt(Parameters.DataWidth))
-  val mie     = Input(UInt(Parameters.DataWidth))
+  val mie     = Input(Vec(Parameters.ActiveInterrupts.length, Bool()))
 
   val mstatus_write_data = Output(UInt(Parameters.DataWidth))
   val mepc_write_data    = Output(UInt(Parameters.DataWidth))
@@ -339,11 +339,14 @@ class CSR extends Module {
     io.reg_write_data_ex,
     mepc
   )
-  io.clint_access_bundle.mie := Mux(
+  val active_mie = Mux(
     io.reg_write_enable_ex && io.reg_write_address_ex === CSRRegister.MIE,
     io.reg_write_data_ex,
     mie
   )
+  for (i <- Parameters.ActiveInterrupts.indices) {
+    io.clint_access_bundle.mie(i) := active_mie(Parameters.ActiveInterrupts(i))
+  }
 
   when(io.clint_access_bundle.direct_write_enable) {
     mstatus := io.clint_access_bundle.mstatus_write_data

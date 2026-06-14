@@ -32,8 +32,8 @@ class CLINT extends Module {
     val csr_bundle = new CSRDirectAccessBundle
   })
   val interrupt_enable_global   = io.csr_bundle.mstatus(3) // MIE bit (global enable)
-  val interrupt_enable_timer    = io.csr_bundle.mie(7)     // MTIE bit (timer enable)
-  val interrupt_enable_external = io.csr_bundle.mie(11)    // MEIE bit (external enable)
+  val interrupt_enable_timer    = io.csr_bundle.mie(Parameters.ActiveInterrupts.indexOf(7))     // MTIE bit (timer enable)
+  val interrupt_enable_external = io.csr_bundle.mie(Parameters.ActiveInterrupts.indexOf(11))    // MEIE bit (external enable)
 
   val instruction_address = Mux(
     io.jump_flag,

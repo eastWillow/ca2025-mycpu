@@ -15,9 +15,16 @@ import riscv.core.InterruptStatus
 class CLINTTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior.of("Core Local Interrupt Controller")
 
+  def pokeMie(dut: CLINT, mie: Int): Unit = {
+    for (i <- Parameters.ActiveInterrupts.indices) {
+      val bit = Parameters.ActiveInterrupts(i)
+      dut.io.csr_bundle.mie(i).poke(((mie & (1 << bit)) != 0).B)
+    }
+  }
+
   def setupDefaultCSR(dut: CLINT, mie: Int = 0x888, mstatus: Int = 0x8): Unit = {
     dut.io.csr_bundle.mstatus.poke(mstatus.U) // MIE=1 (global enable)
-    dut.io.csr_bundle.mie.poke(mie.U)
+    pokeMie(dut, mie)
     dut.io.csr_bundle.mtvec.poke(0x100.U)
     dut.io.csr_bundle.mepc.poke(0x200.U)
     dut.io.csr_bundle.mcause.poke(0.U)
@@ -159,7 +166,7 @@ class CLINTTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "disable interrupts in mstatus when handling interrupt" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
       dut.io.csr_bundle.mstatus.poke(0x8.U) // MIE=1
-      dut.io.csr_bundle.mie.poke(0x80.U)
+      pokeMie(dut, 0x80)
       dut.io.csr_bundle.mtvec.poke(0x100.U)
       dut.io.csr_bundle.mepc.poke(0.U)
       dut.io.csr_bundle.mcause.poke(0.U)
