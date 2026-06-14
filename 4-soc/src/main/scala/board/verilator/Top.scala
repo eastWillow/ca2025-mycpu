@@ -83,7 +83,7 @@ class Top extends Module {
 
   // Bus switch
   bus_switch.io.master <> cpu.io.axi4_channels
-  bus_switch.io.address := cpu.io.bus_address
+  bus_switch.io.address := cpu.io.bus_address(Parameters.AddrBits - 1, Parameters.AddrBits - Parameters.SlaveDeviceCountBits)
   bus_switch.io.slaves(0) <> mem_slave.io.channels
   bus_switch.io.slaves(1) <> vga.io.channels
   bus_switch.io.slaves(2) <> uart.io.channels
