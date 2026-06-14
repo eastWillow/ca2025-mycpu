@@ -242,3 +242,12 @@ set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 set_property BITSTREAM.CONFIG.CONFIGRATE 33 [current_design]
 set_property BITSTREAM.CONFIG.PERSIST NO [current_design]
 set_property CONFIG_MODE SPIx4 [current_design]
+
+# Timing constraints for asynchronous clock domain crossings
+set_clock_groups -asynchronous \
+    -group [get_clocks -of_objects [get_pins u_clk_wiz/clk_cpu]] \
+    -group [get_clocks -of_objects [get_pins u_clk_wiz/clk_vga]]
+
+set_clock_groups -asynchronous \
+    -group [get_clocks -of_objects [get_pins u_clk_wiz/clk_serial]] \
+    -group [get_clocks -of_objects [get_pins u_clk_wiz/clk_vga]]
