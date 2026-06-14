@@ -9,7 +9,7 @@ import chisel3._
 import peripheral.InstructionROM
 import peripheral.Memory
 import peripheral.ROMLoader
-import riscv.core.CPU
+import riscv.core.verilator.CPU
 
 // Simplified test harness for RISCOF compliance tests
 // Uses AXI4-Lite to connect CPU to Memory, matching the 4-soc architecture
