@@ -72,7 +72,7 @@ module dut_top (
     // 2. Internal Signals
     // -------------------------------------------------------------------------
     wire        io_instruction_valid = 1'b1;
-    wire [31:0] io_instruction_address;
+//    wire [31:0] io_instruction_address;
     reg  [31:0] io_instruction;
     wire [31:0] io_instruction_req;
 
@@ -107,8 +107,9 @@ module dut_top (
         .io_instruction_valid          (io_instruction_valid),
         .io_instruction                (io_instruction),
         .io_instruction_req            (io_instruction_req),
-        .io_instruction_address        (io_instruction_address),
-        
+        //.io_instruction_address        (io_instruction_address),
+        .io_instruction_address        (),
+
         // Data Memory Interface
         .io_mem_slave_read             (io_mem_slave_read),
         .io_mem_slave_read_valid       (io_mem_slave_read_valid),
@@ -259,6 +260,8 @@ module dut_top (
     // Address Width 14 => 16K words => 64KB.
 
     // IMEM: Load program.mem
+    wire [12:0] imem_addra = (io_mem_slave_address - IMEM_BASE) >> 2;
+    wire [12:0] imem_addrb = (io_instruction_req - IMEM_BASE) >> 2;
     TrueDualPortRAM32_DUT #(
         .DEPTH(8192),
         .ADDR_WIDTH(13),
@@ -267,15 +270,17 @@ module dut_top (
     ) u_imem (
         .clka  (clk_cpu),
         .wea   (imem_we),
-        .addra ((io_mem_slave_address - IMEM_BASE) >> 2),
+        .addra (imem_addra),
         .dina  (io_mem_slave_write_data),
         .douta (imem_douta),
         .clkb  (clk_cpu),
-        .addrb ((io_instruction_req - IMEM_BASE) >> 2),
+        .addrb (imem_addrb),
         .doutb (imem_doutb)
     );
 
     // DMEM: Empty Init
+    wire [12:0] dmem_addra = (io_mem_slave_address - DMEM_BASE) >> 2;
+    wire [12:0] dmem_addrb = (io_instruction_req - DMEM_BASE) >> 2;
     TrueDualPortRAM32_DUT #(
         .DEPTH(8192),
         .ADDR_WIDTH(13),
@@ -284,15 +289,17 @@ module dut_top (
     ) u_dmem (
         .clka  (clk_cpu),
         .wea   (dmem_we),
-        .addra ((io_mem_slave_address - DMEM_BASE) >> 2),
+        .addra (dmem_addra),
         .dina  (io_mem_slave_write_data),
         .douta (dmem_douta),
         .clkb  (clk_cpu),
-        .addrb ((io_instruction_req - DMEM_BASE) >> 2),
+        .addrb (dmem_addrb),
         .doutb (dmem_doutb)
     );
 
     // SMEM: Empty Init
+    wire [12:0] smem_addra = (io_mem_slave_address - SMEM_BASE) >> 2;
+    wire [12:0] smem_addrb = (io_instruction_req - SMEM_BASE) >> 2;
     TrueDualPortRAM32_DUT #(
         .DEPTH(8192),
         .ADDR_WIDTH(13),
@@ -301,11 +308,11 @@ module dut_top (
     ) u_smem (
         .clka  (clk_cpu),
         .wea   (smem_we),
-        .addra ((io_mem_slave_address - SMEM_BASE) >> 2),
+        .addra (smem_addra),
         .dina  (io_mem_slave_write_data),
         .douta (smem_douta),
         .clkb  (clk_cpu),
-        .addrb ((io_instruction_req - SMEM_BASE) >> 2),
+        .addrb (smem_addrb),
         .doutb (smem_doutb)
     );
 

@@ -44,7 +44,7 @@ module TrueDualPortRAM32_DUT #(
 );
 
     // RAM storage
-    (* ram_style = "block" *) reg [31:0] mem [0:DEPTH-1];
+    (* ram_style = "block", ram_decomp = "power" *) reg [31:0] mem [0:DEPTH-1];
 
     // Port A: Read/Write
     always @(posedge clka) begin
