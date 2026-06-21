@@ -91,10 +91,10 @@ module dut_top (
     wire        io_signal_interrupt = 1'b0;
 
     // VGA Internal
-    wire [5:0]  io_vga_rrggbb;
-    wire        io_vga_hsync_int;
-    wire        io_vga_vsync_int;
-    wire        io_vga_activevideo;
+    wire [5:0]  io_vga_rrggbb = 0;
+    wire        io_vga_hsync_int = 0;
+    wire        io_vga_vsync_int = 0;
+    wire        io_vga_activevideo = 0;
 
     // -------------------------------------------------------------------------
     // 3. DUT Instantiation
@@ -124,18 +124,6 @@ module dut_top (
         
         // Interrupt & UART
         .io_signal_interrupt           (io_signal_interrupt),
-        .io_uart_txd                   (uart_rxd_out),
-        .io_uart_rxd                   (uart_txd_in),
-        .io_uart_interrupt             (),
-
-        // VGA Signals
-        .io_vga_pixclk                 (clk_vga),  
-        .io_vga_vsync                  (io_vga_vsync_int),
-        .io_vga_hsync                  (io_vga_hsync_int),
-        .io_vga_activevideo            (io_vga_activevideo),
-        .io_vga_rrggbb                 (io_vga_rrggbb),
-        .io_vga_x_pos                  (),
-        .io_vga_y_pos                  (),
         
         // Debug
         .io_cpu_debug_read_address     (),

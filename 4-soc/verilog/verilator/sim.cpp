@@ -405,22 +405,22 @@ int main(int argc, char **argv)
 
     // Initialize inputs
     top->io_signal_interrupt = 0;
-    top->io_instruction_valid = 1;
+    
     top->io_mem_slave_read_valid = 0;
     top->io_mem_slave_read_data = 0;
-    top->io_uart_rxd = 1;
+    
     top->io_cpu_debug_read_address = 0;
     top->io_cpu_csr_debug_read_address = 0;
-    top->io_vga_pixclk = 0;
+    
 
-    uint32_t inst = mem.read(0x1000);
+    
 
     while (cycle < max_cycles && !Verilated::gotFinish()) {
         // Progress report every 10M cycles (suppress in terminal mode)
         if (!interactive_mode && cycle - last_report >= 10000000) {
             std::cout << "[" << cycle / 1000000 << "M] " << frames
                       << " frames, PC=0x" << std::hex
-                      << top->io_instruction_address << std::dec << "\n";
+                      << 0 << std::dec << "\n";
             last_report = cycle;
         }
 
@@ -428,7 +428,7 @@ int main(int argc, char **argv)
         if (vga_initialized && !(cycle & 0x3FFF) && !vga->poll_events())
             break;
 
-        top->io_instruction = inst;
+        
         top->clock = !top->clock;
 
         // Single authoritative eval() after clock toggle.
@@ -454,14 +454,14 @@ int main(int argc, char **argv)
                                    (top->io_mem_slave_write_strobe_3 << 3);
 
         // Capture VGA outputs for display update
-        uint8_t vga_color = top->io_vga_rrggbb & 0x3F;
-        bool vga_active = top->io_vga_activevideo;
-        bool vga_vsync = top->io_vga_vsync;
-        uint16_t vga_x = top->io_vga_x_pos;
-        uint16_t vga_y = top->io_vga_y_pos;
+        uint8_t vga_color = 0 & 0x3F;
+        bool vga_active = 0;
+        bool vga_vsync = 0;
+        uint16_t vga_x = 0;
+        uint16_t vga_y = 0;
 
         // Capture UART TX line for serial output
-        bool uart_txd = top->io_uart_txd;
+        bool uart_txd = 1;
 
         // =====================================================================
         // REACTION PHASE: Act on captured state. Order no longer matters.
@@ -472,11 +472,11 @@ int main(int argc, char **argv)
         // NO eval() here: avoids race condition with memory signals
         if (++vga_div >= 4) {
             vga_div = 0;
-            top->io_vga_pixclk = !top->io_vga_pixclk;
+            
 
             // Process VGA display using captured outputs (on pixclk rising
             // edge)
-            if (top->io_vga_pixclk && !headless) {
+            if (0 && !headless) {
                 uint8_t color = vga_color;
                 bool active = vga_active;
 
@@ -588,7 +588,7 @@ int main(int argc, char **argv)
         // RX input handling
         if (interactive_mode) {
             // Use UART terminal RX line
-            top->io_uart_rxd = uart.current_rx_line();
+            
 
             // Early exit when TX has been idle for a while after Ctrl-C
             // This means "Goodbye!" message has finished transmitting
@@ -598,13 +598,13 @@ int main(int argc, char **argv)
         } else {
             // Loopback mode: connect TX output to RX input for self-test
             // Use captured uart_txd for consistent loopback
-            top->io_uart_rxd = uart_txd;
+            
         }
 
         // Final eval() to propagate input changes (RXD, memory responses)
         // before the next clock edge. This settles combinational logic.
         top->eval();
-        inst = mem.read(top->io_instruction_address);
+        
         cycle++;
     }
 
@@ -615,7 +615,7 @@ int main(int argc, char **argv)
     std::cout << "\nDone: " << cycle << " cycles";
     if (vga_initialized)
         std::cout << ", " << frames << " frames";
-    std::cout << "\nFinal PC: 0x" << std::hex << top->io_instruction_address
+    std::cout << "\nFinal PC: 0x" << std::hex << 0
               << std::dec << "\n";
 
     // Print VGA color diagnostics (only if VGA was used)

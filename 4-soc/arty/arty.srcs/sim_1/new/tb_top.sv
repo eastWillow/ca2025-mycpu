@@ -108,16 +108,7 @@ module tb_top;
     logic        io_mem_slave_write_strobe_3;
 
     logic        io_signal_interrupt;
-    logic        io_uart_txd;
-    logic        io_uart_rxd;
-    
-    // VGA signals
-    logic        io_vga_vsync;
-    logic        io_vga_hsync;
-    logic        io_vga_activevideo;
-    logic [7:0]  io_vga_rrggbb;
-    logic [15:0] io_vga_x_pos;
-    logic [15:0] io_vga_y_pos;
+
 
     // Debug signals
     logic [31:0] io_cpu_debug_read_address = 0;
@@ -144,15 +135,6 @@ module tb_top;
         .io_mem_slave_write_strobe_2   (io_mem_slave_write_strobe_2),
         .io_mem_slave_write_strobe_3   (io_mem_slave_write_strobe_3),
         .io_signal_interrupt           (io_signal_interrupt),
-        .io_uart_txd                   (io_uart_txd),
-        .io_uart_rxd                   (io_uart_rxd),
-        .io_vga_pixclk                 (clk_vga),
-        .io_vga_vsync                  (io_vga_vsync),
-        .io_vga_hsync                  (io_vga_hsync),
-        .io_vga_activevideo            (io_vga_activevideo),
-        .io_vga_rrggbb                 (io_vga_rrggbb),
-        .io_vga_x_pos                  (io_vga_x_pos),
-        .io_vga_y_pos                  (io_vga_y_pos),
         .io_cpu_debug_read_address     (io_cpu_debug_read_address),
         .io_cpu_csr_debug_read_address (io_cpu_csr_debug_read_address)
     );
@@ -354,44 +336,8 @@ module tb_top;
     );
 
     // -------------------------------------------------------------------------
-    // UART, VGA, Watchdog (No changes)
+    // Watchdog
     // -------------------------------------------------------------------------
-    assign io_uart_rxd = io_uart_txd;
-    logic [7:0] uart_byte;
-    
-    initial begin
-        forever begin
-            @(negedge io_uart_txd);
-            repeat (CYCLES_PER_BIT + (CYCLES_PER_BIT/2)) @(posedge clk_cpu);
-            for (int i = 0; i < 8; i++) begin
-                uart_byte[i] = io_uart_txd;
-                repeat (CYCLES_PER_BIT) @(posedge clk_cpu);
-            end
-            if (uart_byte >= 32 && uart_byte <= 126) $write("%c", uart_byte);
-            else if (uart_byte == 10 || uart_byte == 13) $write("\n");
-            else $write("<%h>", uart_byte);
-        end
-    end
-
-    integer frame_count = 0;
-    integer active_pixels = 0;
-    logic prev_vsync;
-    always_ff @(posedge clk_cpu) begin
-        if (io_vga_vsync && !prev_vsync) begin
-            frame_count++;
-            if (frame_count % 60 == 0) begin
-                $display("[VGA] Time: %t | Frames: %0d | Active Pixels: %0d", 
-                         $time, frame_count, active_pixels);
-            end
-        end
-        prev_vsync <= io_vga_vsync;
-    end
-
-    always_ff @(posedge clk_cpu) begin
-        if (!sys_reset) begin
-            if (io_vga_activevideo) active_pixels++;
-        end
-    end
 
     initial begin
         repeat (50_000_000) @(posedge clk_cpu);

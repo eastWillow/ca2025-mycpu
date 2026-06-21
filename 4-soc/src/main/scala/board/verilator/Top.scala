@@ -33,6 +33,14 @@ class Top extends Module {
   arbiter.io.data_master <> cpu.io.data_axi
   arbiter.io.slave <> mem_slave.io.channels
 
+  // Terminate unused memory_bundle inputs with explicit values
+  cpu.io.memory_bundle.read_data           := 0.U
+  cpu.io.memory_bundle.read_valid          := false.B
+  cpu.io.memory_bundle.write_valid         := false.B
+  cpu.io.memory_bundle.write_data_accepted := false.B
+  cpu.io.memory_bundle.busy                := false.B
+  cpu.io.memory_bundle.granted             := false.B
+
   // Interrupts
   cpu.io.interrupt_flag := io.signal_interrupt
 

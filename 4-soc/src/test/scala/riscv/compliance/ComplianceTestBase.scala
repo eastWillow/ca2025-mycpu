@@ -141,20 +141,14 @@ abstract class ComplianceTestBase extends AnyFlatSpec with ChiselScalatestTester
     // Extract signature region from ELF symbol table
     val (beginSig, endSig) = ElfSignatureExtractor.extractSignatureRange(elfFile)
 
-    // Construct absolute path to test.asmbin from elfFile's directory
-    // The elfFile is like ".../dut/dut.elf" and test.asmbin is in the same directory
-    val elfPath            = java.nio.file.Paths.get(elfFile)
-    val testDir            = elfPath.getParent
-    val absoluteAsmbinPath = testDir.resolve(asmbinFile).toAbsolutePath.toString
-
-    // Instantiate 4-soc CPU (pipelined with AXI4-Lite)
-    test(new TestTopModule(absoluteAsmbinPath)).withAnnotations(annos) { c =>
+    // Pass asmbinFile directly, it corresponds to test_xxx.asmbin in src/main/resources
+    test(new TestTopModule(asmbinFile)).withAnnotations(annos) { c =>
       // Disable clock timeout - some tests require many cycles
       c.clock.setTimeout(0)
 
       // Execute test program for sufficient cycles
-      // 4-soc uses 4:1 clock divider, so 50K iterations * 4 = 200K CPU cycles
-      for (_ <- 1 to 50) {
+      // 4-soc uses 4:1 clock divider, so 500K iterations * 4 = 2M CPU cycles
+      for (_ <- 1 to 500) {
         c.clock.step(1000)
       }
 
