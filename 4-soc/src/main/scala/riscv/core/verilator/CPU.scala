@@ -26,7 +26,15 @@ class CPU(val implementation: Int = ImplementationType.FiveStageFinal) extends M
       inst_axi_master.io.bundle.write_strobe := VecInit(Seq.fill(Parameters.WordSize)(false.B))
       
       cpu.io.instruction := inst_axi_master.io.bundle.read_data
-      cpu.io.instruction_valid := inst_axi_master.io.bundle.read_valid
+
+      // If a branch occurs while an AXI fetch is in flight, the AXI master will
+      // return the data for the old PC. We must ignore this stale data.
+      val expected_inst_address = RegInit(0.U(Parameters.AddrWidth))
+      when(!inst_axi_master.io.bundle.busy) {
+        expected_inst_address := cpu.io.instruction_address
+      }
+      val inst_pc_matches = expected_inst_address === cpu.io.instruction_address
+      cpu.io.instruction_valid := inst_axi_master.io.bundle.read_valid && inst_pc_matches
       
       io.inst_axi <> inst_axi_master.io.channels
 

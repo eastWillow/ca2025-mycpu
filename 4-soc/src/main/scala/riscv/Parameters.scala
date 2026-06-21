@@ -64,7 +64,7 @@ object Parameters {
   val MemorySizeInWords = MemorySizeInBytes / 4
 
   // Program entry point: 0x1000 (after reset vector area)
-  val EntryAddress = 0x1000.U(Parameters.AddrWidth)
+  val EntryAddress = 0x0.U(Parameters.AddrWidth)
 
   // AXI4-Lite bus topology: single master (CPU), 8 slave address regions
   // Address decoding uses upper 3 bits: 0x00-0x1F=RAM, 0x20-0x3F=VGA, etc.
