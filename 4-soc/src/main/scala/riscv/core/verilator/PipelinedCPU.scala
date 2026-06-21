@@ -111,7 +111,7 @@ import riscv.Parameters
  * - csr_debug_read_address/data: CSR inspection
  */
 class PipelinedCPU extends Module {
-  val io = IO(new CPUBundle)
+  val io = IO(new PipelinedCPUBundle)
 
   val ctrl       = Module(new Control)
   val regs       = Module(new RegisterFile)

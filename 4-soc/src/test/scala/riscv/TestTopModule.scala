@@ -48,16 +48,16 @@ class TestTopModule(exeFilename: String) extends Module {
 
     cpu.io.debug_read_address     := 0.U
     cpu.io.csr_debug_read_address := 0.U
-    cpu.io.instruction_valid      := rom_loader.io.load_finished
 
-    // Instruction fetch from memory
-    mem.io.instruction_address := cpu.io.instruction_address
-    cpu.io.instruction         := mem.io.instruction
+    val arbiter = Module(new bus.DualMasterAXIArbiter(Parameters.AddrBits, Parameters.DataBits))
+    arbiter.io.inst_master <> cpu.io.inst_axi
+    arbiter.io.data_master <> cpu.io.data_axi
+    arbiter.io.slave <> mem_slave.io.channels
+
+    // Disable the dedicated instruction port on memory since we fetch via AXI
+    mem.io.instruction_address := 0.U
 
     cpu.io.interrupt_flag := io.interrupt_flag
-
-    // Connect AXI4-Lite channels from CPU to memory slave
-    mem_slave.io.channels <> cpu.io.axi4_channels
 
     // Memory connections using Mux to select between ROM loading and normal operation
     val loading = !rom_loader.io.load_finished
