@@ -11,17 +11,13 @@ import riscv.core.BusBundle
 import riscv.Parameters
 
 class CPUBundle extends Bundle {
-  // Instruction fetch interface
-  val instruction_address = Output(UInt(Parameters.AddrWidth))
-  val instruction         = Input(UInt(Parameters.InstructionWidth))
-  val instruction_valid   = Input(Bool())
-
   // Memory/Bus interface
   val memory_bundle = new BusBundle
   val device_select = Output(UInt(Parameters.SlaveDeviceCountBits.W))
 
-  // AXI4-Lite interface (for top-level integration)
-  val axi4_channels = new AXI4LiteChannels(Parameters.AddrBits, Parameters.DataBits)
+  // Dual AXI4-Lite interfaces
+  val inst_axi = new AXI4LiteChannels(Parameters.AddrBits, Parameters.DataBits)
+  val data_axi = new AXI4LiteChannels(Parameters.AddrBits, Parameters.DataBits)
 
   // Interrupt
   val interrupt_flag = Input(UInt(Parameters.InterruptFlagWidth))

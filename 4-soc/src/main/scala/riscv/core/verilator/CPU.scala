@@ -17,10 +17,18 @@ class CPU(val implementation: Int = ImplementationType.FiveStageFinal) extends M
     case ImplementationType.FiveStageFinal =>
       val cpu = Module(new PipelinedCPU)
 
-      // Connect instruction fetch interface
-      io.instruction_address   := cpu.io.instruction_address
-      cpu.io.instruction       := io.instruction
-      cpu.io.instruction_valid := io.instruction_valid
+      // Connect instruction fetch interface through AXI4-Lite master
+      val inst_axi_master = Module(new AXI4LiteMaster(Parameters.AddrBits, Parameters.DataBits))
+      inst_axi_master.io.bundle.address := cpu.io.instruction_address
+      inst_axi_master.io.bundle.read := true.B // Always read for fetch
+      inst_axi_master.io.bundle.write := false.B
+      inst_axi_master.io.bundle.write_data := 0.U
+      inst_axi_master.io.bundle.write_strobe := VecInit(Seq.fill(Parameters.WordSize)(false.B))
+      
+      cpu.io.instruction := inst_axi_master.io.bundle.read_data
+      cpu.io.instruction_valid := inst_axi_master.io.bundle.read_valid
+      
+      io.inst_axi <> inst_axi_master.io.channels
 
       // Connect memory/bus interface through AXI4-Lite master
       val axi_master = Module(new AXI4LiteMaster(Parameters.AddrBits, Parameters.DataBits))
@@ -43,8 +51,8 @@ class CPU(val implementation: Int = ImplementationType.FiveStageFinal) extends M
       cpu.io.memory_bundle.busy                := axi_master.io.bundle.busy
       cpu.io.memory_bundle.granted             := !axi_master.io.bundle.busy // Granted when not busy
 
-      // Connect AXI4-Lite channels to top-level
-      io.axi4_channels <> axi_master.io.channels
+      // Connect AXI4-Lite data channels to top-level
+      io.data_axi <> axi_master.io.channels
 
       // Initialize cpu's unused axi4_channels inputs (FiveStageCPUFinal doesn't use these)
       cpu.io.axi4_channels.read_address_channel.ARREADY  := false.B
