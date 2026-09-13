@@ -8,6 +8,9 @@ include ../common/build.mk
 test:
 	cd .. && sbt "project soc" test
 
+litex-rtl:
+	cd .. && sbt "project soc" "runMain board.litex.GenerateCa2025Mycpu"
+
 verilator:
 	@if java -version >/dev/null 2>&1; then \
 		cd .. && PATH=$$HOME/.local/bin:$$PATH sbt "project soc" "runMain board.verilator.VerilogGenerator"; \
@@ -132,4 +135,4 @@ clean:
 distclean: clean
 	$(RM) -r results
 
-.PHONY: verilator test indent sim check-vga check-uart shell compliance clean distclean
+.PHONY: verilator litex-rtl test indent sim check-vga check-uart shell compliance clean distclean

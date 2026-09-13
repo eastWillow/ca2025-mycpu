@@ -63,7 +63,7 @@ object Parameters {
   val MemorySizeInBytes = 2097152 // 2MB
   val MemorySizeInWords = MemorySizeInBytes / 4
 
-  // Program entry point: 0x1000 (after reset vector area)
+  // Program entry point: 0x00000000 (LiteX integrated ROM reset vector)
   val EntryAddress = 0x0.U(Parameters.AddrWidth)
 
   // AXI4-Lite bus topology: single master (CPU), 8 slave address regions

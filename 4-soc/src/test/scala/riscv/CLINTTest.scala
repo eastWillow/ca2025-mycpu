@@ -10,191 +10,122 @@ import org.scalatest.flatspec.AnyFlatSpec
 import riscv.core.CLINT
 import riscv.core.InstructionsEnv
 import riscv.core.InstructionsRet
-import riscv.core.InterruptStatus
 
 class CLINTTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior.of("Core Local Interrupt Controller")
 
-  def pokeMie(dut: CLINT, mie: Int): Unit = {
-    for (i <- Parameters.ActiveInterrupts.indices) {
-      val bit = Parameters.ActiveInterrupts(i)
-      dut.io.csr_bundle.mie(i).poke(((mie & (1 << bit)) != 0).B)
-    }
-  }
-
-  def setupDefaultCSR(dut: CLINT, mie: Int = 0x888, mstatus: Int = 0x8): Unit = {
-    dut.io.csr_bundle.mstatus.poke(mstatus.U) // MIE=1 (global enable)
-    pokeMie(dut, mie)
+  private def initialize(
+      dut: CLINT,
+      interrupt: BigInt = 0,
+      instruction: BigInt = 0,
+      instructionAddress: BigInt = 0x1000,
+      mie: BigInt = 0,
+      mstatus: BigInt = 0x8,
+      stall: Boolean = false,
+  ): Unit = {
+    dut.io.interrupt_flag.poke(interrupt.U)
+    dut.io.instruction_id.poke(instruction.U)
+    dut.io.instruction_address_id.poke(instructionAddress.U)
+    dut.io.stall_flag.poke(stall.B)
+    dut.io.csr_bundle.mstatus.poke(mstatus.U)
+    dut.io.csr_bundle.mie.poke(mie.U)
     dut.io.csr_bundle.mtvec.poke(0x100.U)
     dut.io.csr_bundle.mepc.poke(0x200.U)
     dut.io.csr_bundle.mcause.poke(0.U)
   }
 
-  it should "not assert interrupt when no interrupt flag" in {
+  it should "remain idle when no trap is pending" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut)
-      dut.io.interrupt_flag.poke(InterruptStatus.None)
-      dut.io.instruction_id.poke(0.U)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
+      initialize(dut)
+      dut.io.id_interrupt_assert.expect(false.B)
+      dut.io.csr_bundle.direct_write_enable.expect(false.B)
+      dut.io.csr_bundle.mip.expect(0.U)
+    }
+  }
 
-      dut.clock.step()
+  it should "expose and take an enabled LiteX interrupt-vector bit" in {
+    test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
+      val irq = BigInt(1) << 3
+      initialize(dut, interrupt = irq, mie = irq)
+      dut.io.csr_bundle.mip.expect(irq.U)
+      dut.io.id_interrupt_assert.expect(true.B)
+      dut.io.id_interrupt_handler_address.expect(0x100.U)
+      dut.io.csr_bundle.direct_write_enable.expect(true.B)
+      dut.io.csr_bundle.mcause_write_data.expect(0x8000000bL.U)
+      dut.io.csr_bundle.mepc_write_data.expect(0x1000.U)
+    }
+  }
 
+  it should "leave a pending LiteX interrupt masked when its vector bit is disabled" in {
+    test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
+      initialize(dut, interrupt = 1, mie = 0)
+      dut.io.csr_bundle.mip.expect(1.U)
       dut.io.id_interrupt_assert.expect(false.B)
       dut.io.csr_bundle.direct_write_enable.expect(false.B)
     }
   }
 
-  it should "assert timer interrupt when flag set and enabled" in {
+  it should "not take an interrupt while global MIE is clear" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut, mie = 0x80) // MTIE (bit 7) set
-      dut.io.interrupt_flag.poke(InterruptStatus.Timer0)
-      dut.io.instruction_id.poke(0.U)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
-      dut.io.id_interrupt_assert.expect(true.B)
-      dut.io.id_interrupt_handler_address.expect(0x100.U) // mtvec
-      dut.io.csr_bundle.direct_write_enable.expect(true.B)
-      dut.io.csr_bundle.mcause_write_data.expect(0x80000007L.U) // Timer interrupt
-    }
-  }
-
-  it should "not assert timer interrupt when global interrupt disabled" in {
-    test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut, mstatus = 0) // MIE (bit 3) clear
-      dut.io.interrupt_flag.poke(InterruptStatus.Timer0)
-      dut.io.instruction_id.poke(0.U)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
+      initialize(dut, interrupt = 1, mie = 1, mstatus = 0)
       dut.io.id_interrupt_assert.expect(false.B)
     }
   }
 
-  it should "not assert timer interrupt when timer interrupt disabled in MIE" in {
+  it should "record the ECALL instruction address in mepc" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut, mie = 0) // MTIE clear
-      dut.io.interrupt_flag.poke(InterruptStatus.Timer0)
-      dut.io.instruction_id.poke(0.U)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
-      dut.io.id_interrupt_assert.expect(false.B)
-    }
-  }
-
-  it should "handle ECALL instruction correctly" in {
-    test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut)
-      dut.io.interrupt_flag.poke(InterruptStatus.None)
-      dut.io.instruction_id.poke(InstructionsEnv.ecall)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
+      initialize(dut, instruction = InstructionsEnv.ecall.litValue, instructionAddress = 0x1234)
       dut.io.id_interrupt_assert.expect(true.B)
-      dut.io.id_interrupt_handler_address.expect(0x100.U) // mtvec
-      dut.io.csr_bundle.direct_write_enable.expect(true.B)
-      dut.io.csr_bundle.mcause_write_data.expect(11.U) // ECALL from M-mode
-      dut.io.csr_bundle.mepc_write_data.expect(0x1000.U)
+      dut.io.id_interrupt_handler_address.expect(0x100.U)
+      dut.io.csr_bundle.mcause_write_data.expect(11.U)
+      dut.io.csr_bundle.mepc_write_data.expect(0x1234.U)
     }
   }
 
-  it should "handle EBREAK instruction correctly" in {
+  it should "record the EBREAK instruction address in mepc" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut)
-      dut.io.interrupt_flag.poke(InterruptStatus.None)
-      dut.io.instruction_id.poke(InstructionsEnv.ebreak)
-      dut.io.instruction_address_if.poke(0x2000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
+      initialize(dut, instruction = InstructionsEnv.ebreak.litValue, instructionAddress = 0x2348)
       dut.io.id_interrupt_assert.expect(true.B)
       dut.io.csr_bundle.mcause_write_data.expect(3.U)
-      dut.io.csr_bundle.mepc_write_data.expect(0x2000.U)
+      dut.io.csr_bundle.mepc_write_data.expect(0x2348.U)
     }
   }
 
-  it should "handle MRET instruction correctly" in {
+  it should "return to mepc on MRET" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut)
+      initialize(dut, instruction = InstructionsRet.mret.litValue)
       dut.io.csr_bundle.mepc.poke(0x3000.U)
-      dut.io.interrupt_flag.poke(InterruptStatus.None)
-      dut.io.instruction_id.poke(InstructionsRet.mret)
-      dut.io.instruction_address_if.poke(0x100.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
       dut.io.id_interrupt_assert.expect(true.B)
       dut.io.id_interrupt_handler_address.expect(0x3000.U)
       dut.io.csr_bundle.direct_write_enable.expect(true.B)
     }
   }
 
-  it should "use jump_address when jump_flag is set for mepc" in {
+  it should "defer synchronous and asynchronous traps while stalled" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut)
-      dut.io.interrupt_flag.poke(InterruptStatus.None)
-      dut.io.instruction_id.poke(InstructionsEnv.ecall)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(true.B)
-      dut.io.jump_address.poke(0x5000.U)
+      initialize(dut, instruction = InstructionsEnv.ecall.litValue, stall = true)
+      dut.io.id_interrupt_assert.expect(false.B)
+      dut.io.csr_bundle.direct_write_enable.expect(false.B)
 
-      dut.clock.step()
-
-      dut.io.csr_bundle.mepc_write_data.expect(0x5000.U)
+      initialize(dut, interrupt = 1, mie = 1, stall = true)
+      dut.io.id_interrupt_assert.expect(false.B)
+      dut.io.csr_bundle.direct_write_enable.expect(false.B)
     }
   }
 
-  it should "disable interrupts in mstatus when handling interrupt" in {
+  it should "move MIE to MPIE when taking an interrupt" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      dut.io.csr_bundle.mstatus.poke(0x8.U) // MIE=1
-      pokeMie(dut, 0x80)
-      dut.io.csr_bundle.mtvec.poke(0x100.U)
-      dut.io.csr_bundle.mepc.poke(0.U)
-      dut.io.csr_bundle.mcause.poke(0.U)
-      dut.io.interrupt_flag.poke(InterruptStatus.Timer0)
-      dut.io.instruction_id.poke(0.U)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
-      val mstatus_written = dut.io.csr_bundle.mstatus_write_data.peekInt()
-      assert((mstatus_written & 0x8) == 0, s"MIE should be cleared: $mstatus_written")
+      initialize(dut, interrupt = 1, mie = 1, mstatus = 0x8)
+      val nextMstatus = dut.io.csr_bundle.mstatus_write_data.peekInt()
+      assert((nextMstatus & 0x8) == 0, f"MIE should clear: 0x$nextMstatus%x")
+      assert((nextMstatus & 0x80) != 0, f"MPIE should capture MIE: 0x$nextMstatus%x")
     }
   }
 
-  it should "prioritize ECALL over pending interrupt" in {
+  it should "prioritize a synchronous exception over a pending interrupt" in {
     test(new CLINT).withAnnotations(TestAnnotations.annos) { dut =>
-      setupDefaultCSR(dut, mie = 0x80)
-      dut.io.interrupt_flag.poke(InterruptStatus.Timer0)
-      dut.io.instruction_id.poke(InstructionsEnv.ecall)
-      dut.io.instruction_address_if.poke(0x1000.U)
-      dut.io.jump_flag.poke(false.B)
-      dut.io.jump_address.poke(0.U)
-
-      dut.clock.step()
-
-      dut.io.csr_bundle.mcause_write_data.expect(11.U) // ECALL priority
+      initialize(dut, interrupt = 1, instruction = InstructionsEnv.ecall.litValue, mie = 1)
+      dut.io.csr_bundle.mcause_write_data.expect(11.U)
     }
   }
 }

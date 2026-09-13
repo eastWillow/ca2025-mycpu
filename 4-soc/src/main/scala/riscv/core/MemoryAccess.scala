@@ -323,16 +323,18 @@ class MemoryAccess extends Module {
     io.regs_write_enable
   )
 
-  // Forward to EX stage: Select correct data source based on instruction type
+  // Forward to EX/ID: Select correct data source based on instruction type
   // - Memory loads (FromMemory): forward loaded data
   // - CSR instructions (FromCSR): forward CSR read data
-  // - JAL/JALR (NextInstructionAddress): forward PC+4 (return address)
   // - ALU operations (default): forward ALU result
+  //
+  // JAL/JALR link values are not forwarded from MEM. Control stalls any ID
+  // use of the link register until writeback, where WriteBack supplies PC+4.
+  // Computing PC+4 here put a 32-bit increment on the ID redirect path.
   io.forward_to_ex := MuxLookup(forward_regs_write_source, io.alu_result)(
     Seq(
-      RegWriteSource.Memory                 -> io.wb_memory_read_data,
-      RegWriteSource.CSR                    -> io.csr_read_data,
-      RegWriteSource.NextInstructionAddress -> (io.instruction_address + 4.U)
+      RegWriteSource.Memory -> io.wb_memory_read_data,
+      RegWriteSource.CSR    -> io.csr_read_data
     )
   )
 

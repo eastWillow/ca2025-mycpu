@@ -14,10 +14,9 @@ object Registers extends Enumeration {
       s11, t3, t4, t5, t6 = Value
 }
 
-// Register File: 32 general-purpose registers with pipeline write forwarding
+// Register File: 32 general-purpose registers
 // x0 is architecturally constant zero per RISC-V spec
 // Only 31 physical registers allocated (x1-x31), saving 3% resources
-// Write forwarding allows reading currently-being-written value (pipeline optimization)
 class RegisterFile extends Module {
   val io = IO(new Bundle {
     val write_enable  = Input(Bool())
@@ -43,27 +42,21 @@ class RegisterFile extends Module {
     }
   }
 
-  // Read ports with x0 hardwired to zero and write forwarding for pipeline optimization
-  // Timing optimization: nested Mux guards x0 first to avoid subtract on critical path
-  // Priority: x0 check (fastest) → write forwarding → register read (with address mapping)
+  // The pipeline's Forwarding module already supplies MEM/WB bypass data to both
+  // ID and EX. Keeping a second WB bypass here puts the write-address comparison
+  // and data mux in front of every register-file read, including the ID branch
+  // feedback path. Use the stored value here and leave bypass selection to the
+  // single forwarding layer.
   io.read_data1 := Mux(
     io.read_address1 === 0.U,
-    0.U, // x0 always zero - fastest path
-    Mux(
-      io.write_enable && io.write_address === io.read_address1,
-      io.write_data,                    // Forward write data
-      registers(io.read_address1 - 1.U) // Physical storage (mapped)
-    )
+    0.U,
+    registers(io.read_address1 - 1.U)
   )
 
   io.read_data2 := Mux(
     io.read_address2 === 0.U,
-    0.U, // x0 always zero - fastest path
-    Mux(
-      io.write_enable && io.write_address === io.read_address2,
-      io.write_data,                    // Forward write data
-      registers(io.read_address2 - 1.U) // Physical storage (mapped)
-    )
+    0.U,
+    registers(io.read_address2 - 1.U)
   )
 
   io.debug_read_data := Mux(

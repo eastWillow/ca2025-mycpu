@@ -13,7 +13,8 @@ class CSRDirectAccessBundle extends Bundle {
   val mepc    = Input(UInt(Parameters.DataWidth))
   val mcause  = Input(UInt(Parameters.DataWidth))
   val mtvec   = Input(UInt(Parameters.DataWidth))
-  val mie     = Input(Vec(Parameters.ActiveInterrupts.length, Bool()))
+  val mie     = Input(UInt(Parameters.DataWidth))
+  val mip     = Output(UInt(Parameters.InterruptFlagWidth))
 
   val mstatus_write_data = Output(UInt(Parameters.DataWidth))
   val mepc_write_data    = Output(UInt(Parameters.DataWidth))
@@ -31,6 +32,7 @@ object CSRRegister {
   val MSCRATCH = 0x340.U(Parameters.CSRRegisterAddrWidth)
   val MEPC     = 0x341.U(Parameters.CSRRegisterAddrWidth)
   val MCAUSE   = 0x342.U(Parameters.CSRRegisterAddrWidth)
+  val MIP      = 0x344.U(Parameters.CSRRegisterAddrWidth)
 
   // Machine Counter/Timers (read-only shadows at 0xC00+)
   val CycleL   = 0xc00.U(Parameters.CSRRegisterAddrWidth) // Lower 32 bits of cycle counter
@@ -177,6 +179,19 @@ class CSR extends Module {
   val mhpmcounter8 = RegInit(0.U(64.W)) // Total branches resolved
   val mhpmcounter9 = RegInit(0.U(64.W)) // BTB predictions
 
+  // The pipeline events can originate in the fetch/redirect path.  Sample them
+  // before they reach the wide performance-counter enable network so that the
+  // instrumentation cannot lengthen the processor's control-critical paths.
+  // Sampling delays visibility by one cycle but preserves one increment for
+  // every asserted event, including back-to-back events.
+  val branch_misprediction_event = RegNext(io.branch_misprediction, false.B)
+  val hazard_stall_event         = RegNext(io.hazard_stall, false.B)
+  val memory_stall_event         = RegNext(io.memory_stall, false.B)
+  val control_stall_event        = RegNext(io.control_stall, false.B)
+  val btb_miss_taken_event       = RegNext(io.btb_miss_taken, false.B)
+  val branch_resolved_event      = RegNext(io.branch_resolved, false.B)
+  val btb_predicted_event        = RegNext(io.btb_predicted, false.B)
+
   // Shadow registers for atomic 64-bit reads
   // When software reads the low 32 bits, we latch the high 32 bits into a shadow register.
   // This prevents torn reads when the counter increments between reading low and high words.
@@ -251,25 +266,25 @@ class CSR extends Module {
   when(io.instruction_retired && !inhibit_ir) {
     minstret := minstret + 1.U
   }
-  when(io.branch_misprediction && !inhibit_hpm3) {
+  when(branch_misprediction_event && !inhibit_hpm3) {
     mhpmcounter3 := mhpmcounter3 + 1.U
   }
-  when(io.hazard_stall && !inhibit_hpm4) {
+  when(hazard_stall_event && !inhibit_hpm4) {
     mhpmcounter4 := mhpmcounter4 + 1.U
   }
-  when(io.memory_stall && !inhibit_hpm5) {
+  when(memory_stall_event && !inhibit_hpm5) {
     mhpmcounter5 := mhpmcounter5 + 1.U
   }
-  when(io.control_stall && !inhibit_hpm6) {
+  when(control_stall_event && !inhibit_hpm6) {
     mhpmcounter6 := mhpmcounter6 + 1.U
   }
-  when(io.btb_miss_taken && !inhibit_hpm7) {
+  when(btb_miss_taken_event && !inhibit_hpm7) {
     mhpmcounter7 := mhpmcounter7 + 1.U
   }
-  when(io.branch_resolved && !inhibit_hpm8) {
+  when(branch_resolved_event && !inhibit_hpm8) {
     mhpmcounter8 := mhpmcounter8 + 1.U
   }
-  when(io.btb_predicted && !inhibit_hpm9) {
+  when(btb_predicted_event && !inhibit_hpm9) {
     mhpmcounter9 := mhpmcounter9 + 1.U
   }
 
@@ -284,6 +299,7 @@ class CSR extends Module {
       CSRRegister.MSCRATCH -> mscratch,
       CSRRegister.MEPC     -> mepc,
       CSRRegister.MCAUSE   -> mcause,
+      CSRRegister.MIP      -> io.clint_access_bundle.mip,
       // Machine counter-inhibit register
       CSRRegister.MCOUNTINHIBIT -> mcountinhibit,
       // User-mode read-only shadows (0xC00+)
@@ -344,9 +360,7 @@ class CSR extends Module {
     io.reg_write_data_ex,
     mie
   )
-  for (i <- Parameters.ActiveInterrupts.indices) {
-    io.clint_access_bundle.mie(i) := active_mie(Parameters.ActiveInterrupts(i))
-  }
+  io.clint_access_bundle.mie := active_mie
 
   when(io.clint_access_bundle.direct_write_enable) {
     mstatus := io.clint_access_bundle.mstatus_write_data

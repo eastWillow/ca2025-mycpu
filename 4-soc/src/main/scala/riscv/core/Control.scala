@@ -242,6 +242,7 @@ class Control extends Module {
     // Signal indicating JAL/JALR hazard - must not be suppressed by mem_stall
     // JAL/JALR hazards require immediate id_flush even during memory operations
     val jal_jalr_hazard = Output(Bool())
+    val mem_stall = Input(Bool())
   })
 
   // Initialize control signals to default (no stall/flush) state
@@ -342,7 +343,8 @@ class Control extends Module {
         (io.jump_instruction_id &&                              // Jump instruction in ID
           io.memory_read_enable_mem &&                          // Load instruction in MEM
           io.rd_mem =/= 0.U &&                                  // Load destination not x0
-          (io.rd_mem === io.rs1_id || io.rd_mem === io.rs2_id)) // Load dest matches jump source
+          (io.rd_mem === io.rs1_id || io.rd_mem === io.rs2_id) && // Load dest matches jump source
+          io.mem_stall)                                         // Only while the load is pending
         //
         // Example triggering Condition 2:
         // LW x1, 0(x2) [MEM]; NOP [EX]; JALR x0, x1, 0 [ID]
@@ -371,6 +373,7 @@ class Control extends Module {
         // --- Condition 6: JAL/JALR hazard in WB (pipeline register delay) ---
         jal_jalr_hazard_wb
         // JAL/JALR in WB stage, but mem2wb output not yet stable for forwarding
+
   ) {
     // Stall action: Insert bubble and freeze pipeline
     //
@@ -401,7 +404,8 @@ class Control extends Module {
     val mem_hazard_for_branch = io.jump_instruction_id &&
       io.memory_read_enable_mem &&
       io.rd_mem =/= 0.U &&
-      (io.rd_mem === io.rs1_id || io.rd_mem === io.rs2_id)
+      (io.rd_mem === io.rs1_id || io.rd_mem === io.rs2_id) &&
+      io.mem_stall
     io.branch_hazard := ex_hazard_for_branch || mem_hazard_for_branch
     // Export JAL/JALR hazard for PipelinedCPU to bypass mem_stall suppression
     io.jal_jalr_hazard := is_jal_jalr_hazard

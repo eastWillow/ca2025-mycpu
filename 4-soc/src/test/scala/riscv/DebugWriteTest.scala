@@ -20,11 +20,14 @@ class DebugWriteTest extends AnyFlatSpec with ChiselScalatestTester {
       // Run uart test - needs time to execute
       dut.clock.step(50000)
 
-      // Verify program area has instructions (not zeros)
-      dut.io.mem_debug_read_address.poke(0x1000.U)
-      dut.clock.step()
+      // The loader writes the image at the CPU's reset entry.  Do not use the
+      // former 0x1000 educational-platform offset: LiteX resets this CPU at 0.
+      // uart.asmbin begins with little-endian bytes 97 11 00 00.
+      dut.io.mem_debug_read_address.poke(Parameters.EntryAddress)
+      dut.clock.step(2) // SyncReadMem debug port has one-cycle read latency.
       val inst0 = dut.io.mem_debug_read_data.peekInt()
-      assert(inst0 != 0, "Program area should have instructions loaded")
+      assert(inst0 == BigInt("00001197", 16),
+        f"Loader wrote 0x$inst0%08x at the reset entry, expected uart.asmbin word 0x00001197")
     }
   }
 }

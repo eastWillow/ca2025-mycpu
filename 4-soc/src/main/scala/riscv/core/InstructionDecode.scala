@@ -37,8 +37,6 @@ class InstructionDecode extends Module {
     val ex_csr_address         = Output(UInt(Parameters.CSRRegisterAddrWidth))
     val ex_csr_write_enable    = Output(Bool())
     val ctrl_jump_instruction  = Output(Bool())                     // ctrl.io.jump_instruction_id
-    val clint_jump_flag        = Output(Bool())                     // clint.io.jump_flag
-    val clint_jump_address     = Output(UInt(Parameters.AddrWidth)) // clint.io.jump_address
     val if_jump_flag           = Output(Bool())                     // ctrl.io.jump_flag , inst_fetch.io.jump_flag_id
     val if_jump_address        = Output(UInt(Parameters.AddrWidth)) // inst_fetch.io.jump_address_id
   })
@@ -140,55 +138,43 @@ class InstructionDecode extends Module {
       ForwardingType.ForwardFromMEM -> io.forward_from_mem
     )
   )
-  val reg1_data = Mux(uses_rs1, reg1_data_forwarded, 0.U)
-  val reg2_data = Mux(uses_rs2, reg2_data_forwarded, 0.U)
-  io.ctrl_jump_instruction := opcode === Instructions.jal ||
-    (opcode === Instructions.jalr) ||
-    (opcode === InstructionTypes.B)
+  val is_jal  = opcode === Instructions.jal
+  val is_jalr = opcode === Instructions.jalr
+  val is_b    = opcode === InstructionTypes.B
+  io.ctrl_jump_instruction := is_jal || is_jalr || is_b
+
+  // Compare the forwarded operands directly. Operand-use masking stays on the
+  // register-address outputs used by hazard detection and EX, so opcode decode
+  // is not in series with the ID branch-compare → IF/ID flush loop.
+  val compare_taken = MuxLookup(
+    funct3,
+    false.B
+  )(
+    IndexedSeq(
+      InstructionsTypeB.beq  -> (reg1_data_forwarded === reg2_data_forwarded),
+      InstructionsTypeB.bne  -> (reg1_data_forwarded =/= reg2_data_forwarded),
+      InstructionsTypeB.blt  -> (reg1_data_forwarded.asSInt < reg2_data_forwarded.asSInt),
+      InstructionsTypeB.bge  -> (reg1_data_forwarded.asSInt >= reg2_data_forwarded.asSInt),
+      InstructionsTypeB.bltu -> (reg1_data_forwarded.asUInt < reg2_data_forwarded.asUInt),
+      InstructionsTypeB.bgeu -> (reg1_data_forwarded.asUInt >= reg2_data_forwarded.asUInt)
+    )
+  )
 
   // Suppress branch/jump decision when there's a RAW hazard with EX stage
   // The branch_hazard signal indicates that the value needed for comparison is still
   // being computed in EX stage. Forwarding would get the wrong value from MEM stage
   // (which has a different instruction's result). We must NOT take the branch this cycle.
   // The pipeline will stall and re-evaluate next cycle when correct value is available.
-  val branch_taken = !io.branch_hazard && (
-    opcode === Instructions.jal ||
-      (opcode === Instructions.jalr) ||
-      (opcode === InstructionTypes.B) && MuxLookup(
-        funct3,
-        false.B
-      )(
-        IndexedSeq(
-          InstructionsTypeB.beq  -> (reg1_data === reg2_data),
-          InstructionsTypeB.bne  -> (reg1_data =/= reg2_data),
-          InstructionsTypeB.blt  -> (reg1_data.asSInt < reg2_data.asSInt),
-          InstructionsTypeB.bge  -> (reg1_data.asSInt >= reg2_data.asSInt),
-          InstructionsTypeB.bltu -> (reg1_data.asUInt < reg2_data.asUInt),
-          InstructionsTypeB.bgeu -> (reg1_data.asUInt >= reg2_data.asUInt)
-        )
-      )
-  )
+  val branch_taken = !io.branch_hazard && (is_jal || is_jalr || (is_b && compare_taken))
 
-  io.if_jump_flag := branch_taken || io.interrupt_assert
+  // Trap redirect is handled in InstructionFetch from CLINT, not through
+  // these outputs. ORing interrupt_assert here put the handler mux on the
+  // ID branch-compare → PC path of the interrupt-enabled variant.
+  io.if_jump_flag := branch_taken
 
-  val jalr_target = Cat((reg1_data + io.ex_immediate)(Parameters.AddrBits - 1, 1), 0.U(1.W))
+  val jalr_target = Cat((reg1_data_forwarded + io.ex_immediate)(Parameters.AddrBits - 1, 1), 0.U(1.W))
 
-  io.if_jump_address := Mux(
-    io.interrupt_assert,
-    io.interrupt_handler_address,
-    MuxLookup(opcode, 0.U)(
-      IndexedSeq(
-        InstructionTypes.B -> (io.instruction_address + io.ex_immediate),
-        Instructions.jal   -> (io.instruction_address + io.ex_immediate),
-        Instructions.jalr  -> jalr_target
-      )
-    )
-  )
-  io.clint_jump_flag := io.ctrl_jump_instruction
-  io.clint_jump_address := MuxLookup(
-    opcode,
-    0.U
-  )(
+  io.if_jump_address := MuxLookup(opcode, 0.U)(
     IndexedSeq(
       InstructionTypes.B -> (io.instruction_address + io.ex_immediate),
       Instructions.jal   -> (io.instruction_address + io.ex_immediate),

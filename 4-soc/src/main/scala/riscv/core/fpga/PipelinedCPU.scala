@@ -147,14 +147,18 @@ class PipelinedCPU extends Module {
   regs.io.write_enable  := mem2wb.io.output_regs_write_enable
   regs.io.write_address := mem2wb.io.output_regs_write_address
   regs.io.write_data    := wb.io.regs_write_data
-  regs.io.read_address1 := id.io.regs_reg1_read_address
-  regs.io.read_address2 := id.io.regs_reg2_read_address
+  // Keep unused-operand masking on the hazard/forwarding paths, not on the
+  // physical register-file read ports. This removes opcode decode from the
+  // ID branch-resolution feedback path without changing architectural state.
+  regs.io.read_address1 := if2id.io.output_instruction(19, 15)
+  regs.io.read_address2 := if2id.io.output_instruction(24, 20)
 
   regs.io.debug_read_address := io.debug_read_address
   io.debug_read_data         := regs.io.debug_read_data
 
   // Memory stall signal: freeze entire pipeline when AXI4 bus transactions are pending
   val mem_stall = mem.io.ctrl_stall_flag
+  ctrl.io.mem_stall := mem_stall
 
   // Instruction memory interface
   io.instruction_req              := inst_fetch.io.instruction_req
@@ -163,13 +167,17 @@ class PipelinedCPU extends Module {
   inst_fetch.io.jump_address_id   := id.io.if_jump_address
   inst_fetch.io.rom_instruction   := io.instruction
   inst_fetch.io.instruction_valid := io.instruction_valid
+  inst_fetch.io.interrupt_assert          := clint.io.id_interrupt_assert
+  inst_fetch.io.interrupt_handler_address := clint.io.id_interrupt_handler_address
 
-  // Prediction signals from IF2ID pipeline register (all predictors)
-  val btb_predicted    = if2id.io.output_btb_predicted_taken
+  // Prediction signals from IF2ID pipeline register (all predictors).
+  // A flushed fetch keeps its payload but drops valid; ignore its metadata.
+  val id_valid         = if2id.io.output_valid
+  val btb_predicted    = if2id.io.output_btb_predicted_taken && id_valid
   val btb_pred_target  = if2id.io.output_btb_predicted_target
-  val ras_predicted    = if2id.io.output_ras_predicted_valid
+  val ras_predicted    = if2id.io.output_ras_predicted_valid && id_valid
   val ras_pred_target  = if2id.io.output_ras_predicted_target
-  val ibtb_predicted   = if2id.io.output_ibtb_predicted_valid
+  val ibtb_predicted   = if2id.io.output_ibtb_predicted_valid && id_valid
   val ibtb_pred_target = if2id.io.output_ibtb_predicted_target
 
   // Actual branch resolution from ID stage
@@ -244,7 +252,7 @@ class PipelinedCPU extends Module {
 
   // Return Address Stack (RAS) update logic
   // Detect instruction type from ID stage for call/return pattern recognition
-  val id_instruction = if2id.io.output_instruction
+  val id_instruction = Mux(id_valid, if2id.io.output_instruction, InstructionsNop.nop)
   val id_opcode      = id_instruction(6, 0)
   val id_rd          = id_instruction(11, 7)
   val id_rs1         = id_instruction(19, 15)
@@ -354,8 +362,10 @@ class PipelinedCPU extends Module {
   //   IF already fetched the correct next instruction, so no flush needed!
   val prediction_correct = btb_correct_prediction || ras_correct_predict || ibtb_correct_predict
   val need_if_flush =
-    (ctrl.io.if_flush && !prediction_correct) || btb_mispredict || ras_wrong_target || ibtb_wrong_target
-  if2id.io.flush := need_if_flush && !mem_stall
+    (ctrl.io.if_flush && !prediction_correct) || btb_mispredict || ras_wrong_target || ibtb_wrong_target || clint.io.id_interrupt_assert
+  val if_flush_now  = need_if_flush && !mem_stall
+  val if_flush_hold = RegNext(if_flush_now, false.B)
+  if2id.io.flush := if_flush_now || if_flush_hold
 
   // --- Skid buffer for imem return when IF2ID is stalled ---
   val skidValid  = RegInit(false.B)
@@ -398,7 +408,7 @@ class PipelinedCPU extends Module {
   if2id.io.ibtb_predicted_valid  := inst_fetch.io.ibtb_predicted_valid
   if2id.io.ibtb_predicted_target := inst_fetch.io.ibtb_predicted_target
 
-  id.io.instruction               := if2id.io.output_instruction
+  id.io.instruction               := Mux(id_valid, if2id.io.output_instruction, InstructionsNop.nop)
   id.io.instruction_address       := if2id.io.output_instruction_address
   id.io.reg1_data                 := regs.io.read_data1
   id.io.reg2_data                 := regs.io.read_data2
@@ -420,13 +430,15 @@ class PipelinedCPU extends Module {
   // Without this, sw ra captures the stale register file value instead of waiting
   // for the correct forwarded PC+4 value from the JAL/JALR instruction.
   // This was the root cause of the vga_simple bug where sw ra saved 0x1050 instead of 0x125c.
-  id2ex.io.flush               := ctrl.io.id_flush && (!mem_stall || ctrl.io.jal_jalr_hazard)
-  id2ex.io.instruction         := if2id.io.output_instruction
+  id2ex.io.flush               := (ctrl.io.id_flush && (!mem_stall || ctrl.io.jal_jalr_hazard)) || clint.io.id_interrupt_assert
+  id2ex.io.instruction         := Mux(id_valid, if2id.io.output_instruction, InstructionsNop.nop)
   id2ex.io.instruction_address := if2id.io.output_instruction_address
 
-  // ID-stage forwarding values (defined earlier) passed to ID2EX pipeline register
-  id2ex.io.reg1_data              := id_reg1_data_forwarded
-  id2ex.io.reg2_data              := id_reg2_data_forwarded
+  // ID-stage forwarding values passed to ID2EX. Unused-operand encodings
+  // (LUI, AUIPC, JAL, CSR uimm) present x0 here so EX still adds 0 + imm
+  // after the register file started reading the raw instruction fields.
+  id2ex.io.reg1_data := Mux(id.io.regs_reg1_read_address === 0.U, 0.U, id_reg1_data_forwarded)
+  id2ex.io.reg2_data := Mux(id.io.regs_reg2_read_address === 0.U, 0.U, id_reg2_data_forwarded)
   id2ex.io.regs_reg1_read_address := id.io.regs_reg1_read_address
   id2ex.io.regs_reg2_read_address := id.io.regs_reg2_read_address
   id2ex.io.regs_write_enable      := id.io.ex_reg_write_enable
@@ -500,8 +512,11 @@ class PipelinedCPU extends Module {
   wb.io.regs_write_source   := mem2wb.io.output_regs_write_source
   wb.io.csr_read_data       := mem2wb.io.output_csr_read_data
 
-  forwarding.io.rs1_id               := id.io.regs_reg1_read_address
-  forwarding.io.rs2_id               := id.io.regs_reg2_read_address
+  // ID forwarding selects from the raw rs fields, matching the physical
+  // register-file ports. Opcode-based unused-operand masking remains on
+  // id.io.regs_reg*_read_address for Control and EX, not this compare path.
+  forwarding.io.rs1_id               := if2id.io.output_instruction(19, 15)
+  forwarding.io.rs2_id               := if2id.io.output_instruction(24, 20)
   forwarding.io.rs1_ex               := id2ex.io.output_regs_reg1_read_address
   forwarding.io.rs2_ex               := id2ex.io.output_regs_reg2_read_address
   forwarding.io.rd_mem               := ex2mem.io.output_regs_write_address
@@ -509,10 +524,9 @@ class PipelinedCPU extends Module {
   forwarding.io.rd_wb                := mem2wb.io.output_regs_write_address
   forwarding.io.reg_write_enable_wb  := mem2wb.io.output_regs_write_enable
 
-  clint.io.instruction_address_if := inst_fetch.io.instruction_address
-  clint.io.instruction_id         := if2id.io.output_instruction
-  clint.io.jump_flag              := id.io.clint_jump_flag
-  clint.io.jump_address           := id.io.clint_jump_address
+  clint.io.stall_flag             := mem_stall || ctrl.io.pc_stall
+  clint.io.instruction_address_id := if2id.io.output_instruction_address
+  clint.io.instruction_id         := Mux(id_valid, if2id.io.output_instruction, InstructionsNop.nop)
   clint.io.interrupt_flag         := io.interrupt_flag // Direct connection, bypass IF2ID pipeline delay
   clint.io.csr_bundle <> csr_regs.io.clint_access_bundle
 

@@ -73,6 +73,9 @@ class InstructionFetch extends Module {
     val rom_instruction   = Input(UInt(Parameters.DataWidth))
     val instruction_valid = Input(Bool())
 
+    val interrupt_assert          = Input(Bool())
+    val interrupt_handler_address = Input(UInt(Parameters.AddrWidth))
+
     // BTB misprediction correction (from ID stage)
     val btb_mispredict         = Input(Bool())                     // BTB predicted wrong
     val btb_correction_addr    = Input(UInt(Parameters.AddrWidth)) // Correct PC
@@ -123,7 +126,7 @@ class InstructionFetch extends Module {
 
   // BTB prediction: use predicted target if BTB predicts taken
   val btb_next_pc = btb.io.predicted_pc
-  io.btb_predicted_taken  := btb.io.predicted_taken && io.instruction_valid
+  io.btb_predicted_taken  := false.B // btb.io.predicted_taken && io.instruction_valid
   io.btb_predicted_target := btb.io.predicted_pc
 
   // Return Address Stack for JALR return prediction
@@ -155,7 +158,7 @@ class InstructionFetch extends Module {
   ras.io.restore_valid := io.ras_restore_valid
 
   // RAS prediction output (for ID stage to detect misprediction)
-  io.ras_predicted_valid  := ras.io.valid && speculative_ras_pop && io.instruction_valid
+  io.ras_predicted_valid  := false.B // ras.io.valid && speculative_ras_pop && io.instruction_valid
   io.ras_predicted_target := ras.io.predicted_addr
 
   // IndirectBTB prediction: for non-return JALR (function pointers, vtables)
@@ -164,7 +167,7 @@ class InstructionFetch extends Module {
   val ibtb_prediction_hit = ibtb.io.hit && is_indirect_jalr
 
   // IndirectBTB prediction output (for ID stage to detect misprediction)
-  io.ibtb_predicted_valid  := ibtb_prediction_hit && io.instruction_valid
+  io.ibtb_predicted_valid  := false.B // ibtb_prediction_hit && io.instruction_valid
   io.ibtb_predicted_target := ibtb.io.predicted_target
 
   // Latch jump request when stall is active
@@ -195,8 +198,12 @@ class InstructionFetch extends Module {
 
   // Take pending jump (priority) or current jump, respecting stall
   val take_pending = pending_jump && !io.stall_flag_ctrl
-  // Skip current jump if BTB already predicted correctly - IF already at correct target
-  val take_current = io.jump_flag_id && !io.stall_flag_ctrl && !pending_jump && !io.btb_correct_prediction
+  // Redirect PC from the registered jump, not the ID compare combinationally.
+  // That cuts the instruction → RF → compare → pc.D path. IF/ID valid is
+  // flushed for two cycles so the extra sequential fetch is discarded.
+  // Skip if BTB already predicted correctly — IF is already at the target.
+  val take_current =
+    prev_jump_flag && !io.stall_flag_ctrl && !pending_jump && !RegNext(io.btb_correct_prediction, false.B)
   // BTB misprediction correction: redirect to correct PC
   val take_btb_correction = io.btb_mispredict && !io.stall_flag_ctrl
 
@@ -212,9 +219,9 @@ class InstructionFetch extends Module {
     ras_prediction_valid,
     ras.io.predicted_addr, // RAS prediction for returns
     Mux(
-      ibtb_prediction_hit,
+      io.ibtb_predicted_valid,
       ibtb.io.predicted_target,                          // IndirectBTB prediction for non-return JALR
-      Mux(btb.io.predicted_taken, btb_next_pc, pc + 4.U) // BTB prediction or sequential
+      Mux(io.btb_predicted_taken, btb_next_pc, pc + 4.U) // BTB prediction or sequential
     )
   )
 
@@ -228,15 +235,15 @@ class InstructionFetch extends Module {
   val next_pc = MuxCase(
     default_next_pc,
     IndexedSeq(
+      (io.interrupt_assert && !io.stall_flag_ctrl)  -> io.interrupt_handler_address,
       take_pending                                  -> pending_jump_addr,
       take_btb_correction                           -> io.btb_correction_addr,
-      take_current                                  -> io.jump_address_id,
+      take_current                                  -> prev_jump_addr,
       (io.stall_flag_ctrl || !io.instruction_valid) -> pc
     )
   )
 
   pc := next_pc
-  printf("Time=%d pc=%x next_pc=%x inst_vld=%d stall=%d take_pend=%d pend=%d pend_addr=%x btb_corr=%d take_curr=%d jump_flag=%d\n", io.instruction_address, pc, next_pc, io.instruction_valid, io.stall_flag_ctrl, take_pending, pending_jump, pending_jump_addr, take_btb_correction, take_current, io.jump_flag_id)
 
   io.instruction_address := pc
   io.id_instruction      := Mux(io.instruction_valid, io.rom_instruction, InstructionsNop.nop)
