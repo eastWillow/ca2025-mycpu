@@ -92,6 +92,8 @@ section6:
 
   # ===== Section 10: Branch with Multiple RAW =====
   # Test branch condition with both operands having RAW
+  # Prepare the load base well before the false-stall measurement below.
+  addi a5, sp, 0
   addi s11, zero, 3       # s11 = 3
   addi t0, zero, 3        # t0 = 3
   bne s11, t0, skip2      # Branch not taken (RAW on both s11, t0)
@@ -104,9 +106,7 @@ skip2_end:
 
   # ===== Section 11: False Stall  =====
   # Test Control hazard that should not cause stalls
-    # Make a5 a valid base address (reuse sp=0x1000 from Section 2)
-  addi a5, sp, 0
-  
+  # The base address was prepared before Section 10 to avoid a real RAW hazard.
   csrr a2, cycle          # Read cycle CSR
 
   lw  a6, (a5)       # Load from address in a5 (should not stall)

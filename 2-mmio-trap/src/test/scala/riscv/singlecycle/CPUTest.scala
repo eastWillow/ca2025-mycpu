@@ -47,8 +47,13 @@ class TestTopModule(exeFilename: String) extends Module {
   CPU_next   := Mux(CPU_clkdiv === 3.U, 0.U, CPU_clkdiv + 1.U)
   CPU_tick   := CPU_clkdiv === 0.U
   CPU_clkdiv := CPU_next
+  val cpuStarted = RegInit(false.B)
+  when(CPU_tick && !reset.asBool) {
+    cpuStarted := true.B
+  }
 
-  withClock(CPU_tick.asClock) {
+  // Hold reset until the divided clock has sampled it at least once.
+  withClockAndReset(CPU_tick.asClock, (reset.asBool || !cpuStarted).asAsyncReset) {
     val cpu = Module(new CPU)
 
     cpu.io.instruction_valid := rom_loader.io.load_finished
