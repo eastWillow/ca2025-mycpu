@@ -41,12 +41,11 @@ class WriteBack extends Module {
   // - RegWriteSource.Memory (1): Load instruction, use memory read data
   // - RegWriteSource.NextInstructionAddress (2): JAL/JALR, save return address
   //
-  // TODO: Complete MuxLookup to multiplex writeback sources
   // Hint: Specify default value and cases for each source type
-  io.regs_write_data := MuxLookup(io.regs_write_source, ?)(
+  io.regs_write_data := MuxLookup(io.regs_write_source, io.alu_result)(
     Seq(
-      RegWriteSource.Memory                 -> ?,
-      RegWriteSource.NextInstructionAddress -> ?
+      RegWriteSource.Memory                 -> io.memory_read_data,
+      RegWriteSource.NextInstructionAddress -> (io.instruction_address + 4.U)
     )
   )
 }
