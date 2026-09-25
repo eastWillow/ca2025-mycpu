@@ -37,7 +37,13 @@ class TestTopModule(exeFilename: String, implementation: Int) extends Module {
   CPU_tick   := CPU_clkdiv === 0.U
   CPU_clkdiv := CPU_next
 
-  withClock(CPU_tick.asClock) {
+  val cpuStarted = RegInit(false.B)
+  when(CPU_tick && !reset.asBool) {
+    cpuStarted := true.B
+  }
+
+  // Hold reset until the divided clock has sampled it at least once.
+  withClockAndReset(CPU_tick.asClock, (reset.asBool || !cpuStarted).asAsyncReset) {
     val cpu = Module(new CPU(implementation))
     cpu.io.debug_read_address     := 0.U
     cpu.io.csr_debug_read_address := 0.U
