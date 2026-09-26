@@ -2,6 +2,10 @@
 
 RISC-V RV32I processor with AXI4-Lite bus interface, VGA, and UART peripherals.
 
+This is the educational SoC. The LiteX CPU-boundary lab is
+[`../5-litex-soc/`](../5-litex-soc/), with a comparison, WNS, and FPGA
+lecture at [`../5-litex-soc/docs/04-vs-05-wns-fpga.md`](../5-litex-soc/docs/04-vs-05-wns-fpga.md).
+
 ## Features
 
 - CPU: 5-stage pipelined RISC-V RV32I with forwarding and branch prediction

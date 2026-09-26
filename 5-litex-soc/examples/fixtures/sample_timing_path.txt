@@ -1,0 +1,23 @@
+Slack (VIOLATED) : -2.604 ns  (required time - arrival time)
+  Source:          cpu/if2id/instruction_reg[2]/C
+                   (rising edge-triggered flop clocked by main_crg_clkout0)
+  Destination:     cpu/csr/mhpmcounter6_reg[0]/CE
+                   (rising edge-triggered flop clocked by main_crg_clkout0)
+  Path Group:      main_crg_clkout0
+  Path Type:       Setup
+
+  Requirement:     10.000 ns    (100 MHz)
+  Data Path Delay: 12.243 ns    (logic 3.2 ns, route 9.0 ns)
+  Logic Levels:    15
+  Fanout (max):    5654         (if2id/instruction net)
+
+  Startpoint: if2id instruction bit used by decode
+  Through:    register-file read, branch compare, redirect
+  Endpoint:   performance-counter clock enable
+
+# Worksheet (write answers in your notes, not in this file):
+# 1. Period budget at 100 MHz?
+# 2. WNS = period - data delay ≈ ?  (ignore uncertainty for this drill)
+# 3. Is this path logic-limited or route/fanout-limited? Why?
+# 4. Which Mini example models this endpoint (Flush / Redirect / Event)?
+# 5. Would generating a .bit from this report count as BIOS boot? Why not?

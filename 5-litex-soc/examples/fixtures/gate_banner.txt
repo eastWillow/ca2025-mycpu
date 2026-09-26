@@ -1,0 +1,11 @@
+
+[1m        __   _ __      _  __[0m
+ BIOS built on Sep 13 2026 09:42:58
+ BIOS CRC passed (6394dd8c)
+[92;1mlitex[0m> help
+
+LiteX BIOS, available commands:
+
+help                     - Print this help
+
+[92;1mlitex[0m> 

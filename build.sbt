@@ -10,7 +10,7 @@ val chiselVersion = "3.6.1"
 
 // Root aggregate project
 lazy val root = (project in file("."))
-  .aggregate(common, minimal, singleCycle, mmioTrap, pipeline, soc)
+  .aggregate(common, minimal, singleCycle, mmioTrap, pipeline, soc, litexSoc)
   .settings(
     name := "mycpu-root"
   )
@@ -144,4 +144,46 @@ lazy val soc = (project in file("4-soc"))
     addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),
     Test / fork := true,
     Test / javaOptions += s"-Duser.dir=${(ThisBuild / baseDirectory).value}/4-soc",
+  )
+
+// 5-litex-soc: LiteX-facing CPU boundary (exercises). Same five-stage core as
+// 4-soc, without VGA/UART educational peripherals. Fill CA25: Exercise holes.
+lazy val litexSoc = (project in file("5-litex-soc"))
+  .settings(
+    name := "mycpu-litex-soc",
+    libraryDependencies ++= Seq(
+      "edu.berkeley.cs" %% "chisel3" % chiselVersion,
+      "edu.berkeley.cs" %% "chiseltest" % "0.6.0" % "test",
+      "edu.berkeley.cs" %% "firrtl" % "1.6.0",
+    ),
+    scalacOptions ++= Seq(
+      "-language:reflectiveCalls",
+      "-feature",
+      "-Xcheckinit",
+      "-Wconf:cat=deprecation:s",
+    ),
+    addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),
+    Test / fork := true,
+    Test / javaOptions += s"-Duser.dir=${(ThisBuild / baseDirectory).value}/5-litex-soc",
+  )
+
+// Small timing/UART examples for 5-litex-soc. Independent of the CA25 CPU
+// holes so students can `sbt "project litexExamples" test` before filling
+// the LiteX top.
+lazy val litexExamples = (project in file("5-litex-soc/examples"))
+  .settings(
+    name := "mycpu-litex-examples",
+    libraryDependencies ++= Seq(
+      "edu.berkeley.cs" %% "chisel3" % chiselVersion,
+      "edu.berkeley.cs" %% "chiseltest" % "0.6.0" % "test",
+      "edu.berkeley.cs" %% "firrtl" % "1.6.0",
+    ),
+    scalacOptions ++= Seq(
+      "-language:reflectiveCalls",
+      "-feature",
+      "-Xcheckinit",
+      "-Wconf:cat=deprecation:s",
+    ),
+    addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),
+    Test / fork := true,
   )

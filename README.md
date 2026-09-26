@@ -8,9 +8,9 @@
 
 > [!NOTE]
 > Code fragments marked `CA25: Exercise` are intentionally incomplete lab exercises.
-> [0-minimal](0-minimal/) and [4-soc](4-soc/) are complete implementations; other projects require improvements marked with `CA25: Exercise` comments.
+> [0-minimal](0-minimal/) and [4-soc](4-soc/) are complete implementations; other projects require improvements marked with `CA25: Exercise` comments. [5-litex-soc](5-litex-soc/) is the LiteX-facing lab.
 
-This repository presents progressive RISC-V processor implementations in Chisel: single-cycle → interrupt-capable → pipelined → SoC.
+This repository presents progressive RISC-V processor implementations in Chisel: single-cycle → interrupt-capable → pipelined → SoC → LiteX CPU boundary.
 Each lab increases architectural complexity while preserving common verification infrastructure.
 All designs target RV32I ISA and execute real C programs compiled by GNU toolchain.
 Verification combines ChiselTest unit tests with RISCOF compliance suite for architectural correctness.
@@ -45,6 +45,9 @@ These techniques improve CPI from ~2.5 to ~1.2 through systematic hazard mitigat
 This project implements a complete System-on-Chip with AXI4-Lite bus interface.
 The design includes VGA output (640x480@72Hz), UART (115200 baud), and advanced branch prediction.
 Branch prediction combines BTB (32-entry), RAS (4-entry), and IndirectBTB (8-entry) for reduced control hazard penalties.
+
+### `5-litex-soc/`
+This project exposes the five-stage core as a LiteX CPU: clock, reset, a 32-bit interrupt vector, and instruction/data AXI-Lite only. Lab exercises marked `CA25: Exercise` cover the LiteX top, CLINT vector/`mepc`, valid-bit IF/ID flush, and registered PC redirect. Complete answers are the corresponding modules in `4-soc/`.
 
 ### `tests/`
 This directory contains the RISCOF compliance framework for architectural validation.
@@ -101,6 +104,9 @@ The VGA peripheral uses dual-clock CDC for system and 31.5 MHz pixel clocks.
 The branch prediction hierarchy prioritizes RAS for returns, IndirectBTB for function pointers, and BTB as fallback.
 The MyCPU shell provides interactive debugging with memory inspection, CSR access, and performance counters.
 
+### [LiteX CPU Boundary](5-litex-soc/)
+This lab keeps the five-stage core and asks students to fill `CA25: Exercise` holes on the LiteX seam: the `Ca2025Mycpu` top (debug ports hidden, read-only ibus, read/write dbus), the LiteX interrupt vector and ID-stage `mepc`, valid-bit IF/ID flush, and registered PC redirect. `make test` and `make contract` are the oracles. Do not move branch resolution out of ID.
+
 ## Build and Test Workflow
 
 ### Dependencies
@@ -147,7 +153,7 @@ make distclean     # Deep clean: remove RISCOF results and all generated files
 
 ### Per-project targets (run from project directories)
 
-Per-project targets (execute from `1-single-cycle/`, `2-mmio-trap/`, `3-pipeline/`, or `4-soc/`):
+Per-project targets (execute from `1-single-cycle/`, `2-mmio-trap/`, `3-pipeline/`, `4-soc/`, or `5-litex-soc/`):
 ```shell
 make test       # Run ChiselTest suite
 make verilator  # Generate Verilog (via legacy FIRRTL compiler) and build Verilator simulator
@@ -155,6 +161,13 @@ make sim        # Run Verilator simulation; generates waveforms in trace.vcd
 make indent     # Format Scala and C++ sources (scalafmt + clang-format)
 make clean      # Remove build artifacts
 make compliance # Run RISCOF compliance tests (validates RISCOF first)
+```
+
+Additional targets for `5-litex-soc/`:
+```shell
+make examples    # Mini flush/redirect/event + UART oracle (independent of CPU holes)
+make litex-rtl   # Generate Ca2025Mycpu.v
+make contract    # Check the Verilog port list against the LiteX contract
 ```
 
 Additional targets for `4-soc/`:
@@ -193,6 +206,10 @@ The recommended study sequence builds processor complexity progressively:
   ├─ AXI4-Lite       → Standardized bus protocol
   ├─ VGA/UART        → Peripheral integration
   └─ Branch Prediction → Advanced control flow optimization
+5-litex-soc  → Same core, LiteX-facing top (fill CA25: Exercise)
+  ├─ Ca2025Mycpu IO  → Clock, reset, interrupt, AXI-Lite only
+  ├─ CLINT vector    → LiteX mip/mie and ID-stage mepc
+  └─ 100 MHz control → Valid-bit flush and registered PC redirect
 ```
 
 The following critical source files contain comprehensive Scaladoc documentation:

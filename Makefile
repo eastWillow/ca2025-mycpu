@@ -5,7 +5,7 @@
 include common/build.mk
 
 # Project directories
-PROJECTS := 1-single-cycle 2-mmio-trap 3-pipeline 4-soc
+PROJECTS := 1-single-cycle 2-mmio-trap 3-pipeline 4-soc 5-litex-soc
 ALL_MODULES := common $(PROJECTS)
 TEST_DIR := tests
 
